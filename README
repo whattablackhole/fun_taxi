@@ -9,3 +9,36 @@ Openstreetmap
 3. start driver_service - uvicorn driver_service.asgi:application --reload
 4. start kafka - docker compose up --build
 5. start frontend - npm run dev
+
+
+
+test queries:
+
+
+[out:json];
+(
+  way["highway"](around:10, 52.13840393181177, 26.11847162246704);
+  way["highway"](around:10, 52.13787055259241, 26.11298382282257);
+);
+out body;
+>;
+out skel qt; -->
+
+<!-- Steps to Construct a Bounding Box
+Determine the Min and Max Coordinates: For any two points, find the minimum and maximum latitudes and longitudes to define the bounding box.
+
+Min Latitude = min(lat1, lat2)
+Max Latitude = max(lat1, lat2)
+Min Longitude = min(lng1, lng2)
+Max Longitude = max(lng1, lng2)
+Form the Bounding Box: The bbox is then defined by these min and max values. In Overpass API, the bbox is specified as (min_lat, min_lng, max_lat, max_lng). -->
+
+[out:json];
+(
+  way["highway"](52.12467561521258,26.113214492797855 ,52.13841380914448 , 26.118493080139164);
+);
+out body;
+>;
+out skel qt;
+
+

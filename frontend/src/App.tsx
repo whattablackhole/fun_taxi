@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import "./App.css";
 import { OverpassApiService } from "./services/overpass-api";
 import { WebSocketService } from "./services/websocket-connection";
+import MapView from "./views/map-view";
+import 'leaflet/dist/leaflet.css';
+
 
 function App() {
   const overpassApiService = new OverpassApiService();
@@ -15,6 +18,7 @@ function App() {
   });
   return (
     <>
+      <MapView/>
       <div className="card">
         <button onClick={() => overpassApiService.makeSimpleRequest()}>
           Make Request To OverPassAPI
