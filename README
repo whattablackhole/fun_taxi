@@ -3,3 +3,9 @@ Notes:
 Overpass API
 Leaflet
 Openstreetmap
+
+1. start client_service - uvicorn client_service.asgi:application --reload --host 0.0.0.0 --port 8082
+2. start kafka consumer - python3 manage.py consume_kafka
+3. start driver_service - uvicorn driver_service.asgi:application --reload
+4. start kafka - docker compose up --build
+5. start frontend - npm run dev

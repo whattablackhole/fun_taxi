@@ -36,3 +36,9 @@ services:
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
     depends_on:
       - zoo1
+  tile_proxy:
+    build: 
+      context: ./map_cache
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
