@@ -1,7 +1,7 @@
 from django.urls import path
-from .consumers import WSConsumer
+from .consumers import DriverConsumer
 
 
 websocket_urlpatterns = [
-    path('ws/default/', WSConsumer().as_asgi()),
+    path('ws/default/', DriverConsumer().as_asgi()),
 ]

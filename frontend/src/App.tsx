@@ -16,12 +16,20 @@ function App() {
       socketService.disconnect();
     };
   });
+
+  const connectDriverSocket = ()=>{
+    const driverSocketService = new WebSocketService("ws://localhost:8000")
+  }
+
   return (
     <>
       <MapView/>
       <div className="card">
         <button onClick={() => overpassApiService.makeSimpleRequest()}>
           Make Request To OverPassAPI
+        </button>
+        <button onClick={() => connectDriverSocket()}>
+          Connect As Driver
         </button>
       </div>
     </>
