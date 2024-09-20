@@ -16,5 +16,8 @@ class DriverConsumer(AsyncWebsocketConsumer):
     
     async def transportation_request(self, event):
         message = event["message"]
-        await self.send(text_data=message)
+        await self.send(text_data=json.dumps({
+            'type': 'transportation_request',
+            'message': message
+        }))
 

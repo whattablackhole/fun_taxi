@@ -10,7 +10,8 @@ export class WebSocketService {
 
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log("Message from server:", data);
+      const message = JSON.parse(data.message);
+      console.log("Message from server:", message);
     };
 
     this.socket.onclose = () => {

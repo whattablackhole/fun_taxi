@@ -3,7 +3,7 @@ from app.models import TransportationRequest
 
 class PositionSerializer(serializers.Serializer):
     lat = serializers.FloatField()
-    lon = serializers.FloatField()
+    lng = serializers.FloatField()
 
 class TransportationRequestSerializer(serializers.ModelSerializer):
     start_point = PositionSerializer()

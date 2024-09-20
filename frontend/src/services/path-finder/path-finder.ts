@@ -1,4 +1,5 @@
 import { MapItem, MapNode } from "../../models/MapModels";
+import { haversineDistance } from "../../utils/distance";
 import { Neighbor } from "./path-finder-interfaces";
 
 
@@ -108,7 +109,7 @@ export class PathFinderService {
         if (!nNode) {
           return;
         }
-        neigbour.distance = this.haversineDistance(
+        neigbour.distance = haversineDistance(
           current.lat,
           current.lon,
           nNode.lat,
@@ -118,37 +119,14 @@ export class PathFinderService {
     });
   }
 
-  private haversineDistance(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number
-  ): number {
-    const R = 6371;
-    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
-
-    const dLat = toRadians(lat2 - lat1);
-    const dLon = toRadians(lon2 - lon1);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRadians(lat1)) *
-        Math.cos(toRadians(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-
-    return distance;
-  }
+ 
 
   private findNearestNode(lat: number, lon: number) {
     let min = Infinity;
     let node_id = NaN;
 
     this.nodes.forEach((n) => {
-      let distance = this.haversineDistance(n.lat, n.lon, lat, lon);
+      let distance = haversineDistance(n.lat, n.lon, lat, lon);
 
       if (min > distance) {
         node_id = n.id;

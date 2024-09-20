@@ -3,9 +3,9 @@ from django.db import models
 
 # TODO: convert to data model
 class Position(models.Model):
-    def __init__(self, lat: float, lon: float):
+    def __init__(self, lat: float, lng: float):
         self.lat = lat
-        self.lon = lon
+        self.lon = lng
 
 
 class TransportationRequest(models.Model):
