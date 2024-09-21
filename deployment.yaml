@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fun-taxi-user-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fun-taxi-user-service
+  template:
+    metadata:
+      labels:
+        app: fun-taxi-user-service
+    spec:
+      containers:
+        - name: fun-taxi-user-service
+          image: whattablackhole/fun_taxi-user_service:latest
+          ports:
+            - containerPort: 80
