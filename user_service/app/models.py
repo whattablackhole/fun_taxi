@@ -9,8 +9,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
-    first_name = Column(String, nullable=False)
-    second_name = Column(String, nullable=False)
+    username = Column(String, nullable=False)
     is_active = Column(Integer, default=1)
 
     driver_profile = relationship("Driver", back_populates="user", uselist=False)

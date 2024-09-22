@@ -52,6 +52,8 @@ env/
 venv.bak/
 ENV.bak/
 
+*.db
+
 # VS Code settings
 .vscode/
 

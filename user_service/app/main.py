@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from . import models, schemas, crud, auth, database
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-
+from email_validator import validate_email, EmailNotValidError
 
 app = FastAPI()
 
@@ -46,7 +46,11 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
 
 @app.post("/token", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
-    user = crud.get_user_by_email(db, form_data.username)
+    try:
+        email = validate_email(form_data.username)
+        user = crud.get_user_by_email(db, email)
+    except EmailNotValidError:
+        user = crud.get_user_by_username(db, form_data.username)
 
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
