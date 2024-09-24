@@ -1,6 +1,6 @@
 from datetime import timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from . import models, schemas, crud, auth, database
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,9 +50,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         email = validate_email(form_data.username)
         user = crud.get_user_by_email(db, email)
     except EmailNotValidError:
+        print("HELELL")
         user = crud.get_user_by_username(db, form_data.username)
-
+        print(user)
     if not user:
+        print("Hello")
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
     if not auth.verify_password(form_data.password, user.hashed_password):
@@ -97,7 +99,35 @@ def refresh_token(token_refresh: schemas.TokenRefresh, db: Session = Depends(dat
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
+# TODO: protect by admin flag
+@app.post("/roles", response_model=schemas.RoleOut)
+def add_role(role: schemas.RoleCreate, session: Session = Depends(database.get_db)):
+    return crud.add_new_role(session, role)
 
+@app.get("/roles")
+def get_roles(session: Session = Depends(database.get_db)):
+    roles = session.query(models.Role).all()
+    
+    return roles
+
+
+@app.get("/users")
+def get_users_with_roles(session: Session = Depends(database.get_db)):
+     return (
+        session.query(models.User)
+        .options(joinedload(models.User.roles))
+        .all()
+    )
+        
+        
+
+@app.post("/users/role", response_model=schemas.UserOut)
+def add_user_role(role: str, current_user: models.User = Depends(get_current_user), session: Session = Depends(database.get_db)):
+    return crud.add_user_role(session, current_user, role)
+
+@app.post("/users/become_driver", response_model=schemas.DriverOut)
+def become_driver(current_user: models.User = Depends(get_current_user), session: Session = Depends(database.get_db)):
+    return crud.become_driver(session, current_user)
 
 @app.get("/users/me", response_model=schemas.UserOut)
 def read_users_me(current_user: models.User = Depends(get_current_user)):

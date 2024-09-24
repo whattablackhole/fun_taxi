@@ -1,0 +1,7 @@
+.logo {
+    background-image: url("/src/assets/taxi-logo.svg");
+    background-size: contain; /* maintain aspect ratio */
+    background-repeat: no-repeat;
+    height: 100%; /* fill the container height */
+    width: 6rem; /* limit the maximum width */
+}

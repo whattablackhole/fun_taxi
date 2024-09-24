@@ -1,6 +1,8 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 
+
+class DriverOut(BaseModel):
+    id: int
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -9,9 +11,18 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+class RoleOut(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        orm_mode = True
+
+
 class UserOut(UserBase):
     id: int
     is_active: int
+    roles: list[RoleOut]
 
     class Config:
         from_attributes = True
@@ -23,9 +34,11 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     type: str
-    email: Optional[EmailStr] = None
+    email: EmailStr | None = None
 
 class TokenRefresh(BaseModel):
     refresh_token: str
 
-    
+class RoleCreate(BaseModel):
+    name: str
+

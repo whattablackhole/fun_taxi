@@ -12,6 +12,7 @@ import {
 import { EndpointsComponent } from "./EndpointsComponent";
 import { PolylineComponent } from "./PolylineComponent";
 import { OrdersComponent } from "./OrdersComponent";
+import "./MapComponent.scss";
 
 export const MapComponent = () => {
   let northWest: LatLngTuple = [52.1, 26];
@@ -68,7 +69,7 @@ export const MapComponent = () => {
       bounds={bounds}
       maxBounds={bounds}
       zoom={13}
-      style={{ height: "100vh", width: "100%" }}
+      className="map-container"
     >
       <TileLayer
         url="http://localhost:8087/tile/{z}/{x}/{y}.png"

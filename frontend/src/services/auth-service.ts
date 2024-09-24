@@ -13,7 +13,7 @@ export class AuthService {
 
     let refreshToken = localStorage.getItem("refresh_token");
     let accessToken = localStorage.getItem("access_token");
-    let userData = localStorage.getItem("user_data");
+    let userData = localStorage.getItem("user");
 
     // naive approach without validating
 
@@ -25,11 +25,10 @@ export class AuthService {
     if (userData) {
       this.userData = JSON.parse(userData);
     }
-
   }
 
-
   public getUserData() {
+    console.log(this.userData);
     return this.userData;
   }
 
@@ -47,7 +46,7 @@ export class AuthService {
     const response = await fetch(`${this.apiBase}/register`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         username,
@@ -71,15 +70,31 @@ export class AuthService {
     const response = await fetch(`${this.apiBase}/token`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: formBody.toString(),
-    })
+    });
 
     if (response.ok) {
       const data: TokenData = await response.json();
       this.setTokens(data);
       return true;
+    }
+  }
+
+  // temp location
+  public async addUserRole(role: "driver") {
+    const response = await fetch(`${this.apiBase}/users/become_driver`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(data);
     }
   }
 
@@ -102,10 +117,10 @@ export class AuthService {
   }
 
   private setTokens(data: TokenData) {
-        this.accessToken = data.access_token;
-        this.refreshToken = data.refresh_token;
-        localStorage.setItem("refresh_token", data.refresh_token);
-        localStorage.setItem("access_token", data.access_token);
+    this.accessToken = data.access_token;
+    this.refreshToken = data.refresh_token;
+    localStorage.setItem("refresh_token", data.refresh_token);
+    localStorage.setItem("access_token", data.access_token);
   }
 
   private setUser(data: UserData) {
@@ -139,5 +154,4 @@ export class AuthService {
 
     return JSON.parse(jsonPayload);
   }
-
 }

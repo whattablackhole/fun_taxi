@@ -1,6 +1,5 @@
 import "./App.css";
 import { OverpassApiService } from "./services/overpass-api";
-import MapView from "./views/map-view";
 import 'leaflet/dist/leaflet.css';
 import useWebSocket from 'react-use-websocket';
 import {
@@ -10,6 +9,7 @@ import {
 } from "react-router-dom";
 import { AuthView } from "./views/auth-view";
 import { useAuthService } from "./contexts/AuthServiceContext";
+import IndexView from "./views/index-view";
 
 
 function App() {
@@ -35,14 +35,14 @@ function App() {
   // const connectDriverSocket = ()=>{
   //   const driverSocketService = new WebSocketService("ws://localhost:8000")
   // }
-  
+
   const router = createBrowserRouter([
     {
       path: "/",
       loader: checkAuthentication,
       element: (
         <>
-        <MapView/>
+        <IndexView/>
         <div className="card">
           <button onClick={() => overpassApiService.makeSimpleRequest()}>
             Make Request To OverPassAPI

@@ -4,7 +4,6 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import jwt
 import os
-from typing import Optional
 from dotenv import load_dotenv
 from .schemas import TokenData
 
@@ -27,7 +26,7 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
 
     if expires_delta:
@@ -39,7 +38,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def create_refresh_token(data: dict, expire_delta: Optional[timedelta] = None):
+def create_refresh_token(data: dict, expire_delta: timedelta | None = None):
     to_encode = data.copy()
     
     if expire_delta:

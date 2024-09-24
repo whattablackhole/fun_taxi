@@ -1,0 +1,24 @@
+.header-menu__container {
+    display: flex;
+    background-color: azure;
+    height: 72px;
+    border-radius: 10px;
+    position: relative;
+    padding: 0 1rem;
+    z-index: 1;
+}
+
+.header-menu__container {
+    display: flex;
+    align-items: center;
+}
+
+.header-menu__list {
+    display: flex;
+    flex: 1 1;
+    justify-content: center;
+}
+
+.header-menu__item {
+    padding: 0.5rem;
+}

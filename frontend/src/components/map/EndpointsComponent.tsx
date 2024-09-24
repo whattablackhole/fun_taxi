@@ -35,7 +35,7 @@ export const EndpointsComponent = ({ onEndPointSelectionChange }: { onEndPointSe
     <>
       {startPoint && <Marker position={startPoint}></Marker>}
       {endPoint && <Marker position={endPoint}></Marker>}
-      <button onClick={resetPoints}>Reset Points</button>
+      {/* <button onClick={resetPoints}>Reset Points</button> */}
     </>
   );
 };
