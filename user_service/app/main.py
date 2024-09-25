@@ -1,12 +1,22 @@
+from contextlib import asynccontextmanager
 from datetime import timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from . import models, schemas, crud, auth, database
+from . import models, schemas, crud, auth, database, seed
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from email_validator import validate_email, EmailNotValidError
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db = database.SessionLocal()
+    seed.seed_db(db)
+    db.close()
+
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,17 +54,14 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     return created_user
 
 
-@app.post("/token", response_model=schemas.Token)
+@app.post("/token", response_model=schemas.AuthedUser)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     try:
         email = validate_email(form_data.username)
         user = crud.get_user_by_email(db, email)
     except EmailNotValidError:
-        print("HELELL")
         user = crud.get_user_by_username(db, form_data.username)
-        print(user)
     if not user:
-        print("Hello")
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
     if not auth.verify_password(form_data.password, user.hashed_password):
@@ -69,7 +76,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     
     refresh_token = auth.create_refresh_token(data = {"email": user.email}, expire_delta=refresh_token_expires)
 
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    return {"access_token": access_token, "refresh_token": refresh_token, "user": user}
 
 
 
@@ -125,9 +132,9 @@ def get_users_with_roles(session: Session = Depends(database.get_db)):
 def add_user_role(role: str, current_user: models.User = Depends(get_current_user), session: Session = Depends(database.get_db)):
     return crud.add_user_role(session, current_user, role)
 
-@app.post("/users/become_driver", response_model=schemas.DriverOut)
-def become_driver(current_user: models.User = Depends(get_current_user), session: Session = Depends(database.get_db)):
-    return crud.become_driver(session, current_user)
+@app.post("/drivers", response_model=schemas.UserOut)
+def create_driver(current_user: models.User = Depends(get_current_user), session: Session = Depends(database.get_db)):
+    return crud.create_driver(session, current_user)
 
 @app.get("/users/me", response_model=schemas.UserOut)
 def read_users_me(current_user: models.User = Depends(get_current_user)):

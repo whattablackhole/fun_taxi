@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand
 from channels.layers import get_channel_layer
 from confluent_kafka import Consumer, KafkaError
 import asyncio
-
+from consumers import channel_manager
+import json
 
 class Command(BaseCommand):
     help = 'Consume Kafka messages'
@@ -25,19 +26,18 @@ class Command(BaseCommand):
                 else:
                     print(f"Error: {msg.error()}")
                     continue
-
-            # Handle the message
             message = msg.value().decode('utf-8')
-
+            message_data = json.loads(message)
             print(f"Received message: {message}")
-            # You might want to process or forward the message to WebSocket connections
-            await channel_layer.group_send(
-                'chat_group',  # This should match the group name in your WebSocket consumer
-                {
-                    'type': 'chat_message',  # This method will be handled in your WebSocket consumer
-                    'message': message
-                }
-            )
+            channel_name = channel_manager.get_channel_name(message_data['user_id'])
+            if channel_name:
+                await channel_layer.send(
+                    channel_name,
+                    {
+                        'type': 'transportation_request_apply',
+                        'message': message
+                    }
+                )
             await asyncio.sleep(1)  # Avoid busy waiting
 
     def handle(self, *args, **kwargs):

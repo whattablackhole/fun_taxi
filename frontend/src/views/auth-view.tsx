@@ -3,7 +3,7 @@ import { SigningFormComponent, SigningFormData } from "../components/signing/Sig
 import { useAuthService } from "../contexts/AuthServiceContext";
 
 export function AuthView() {
-    const authService = useAuthService();
+    const {authService} = useAuthService();
     const navigate = useNavigate();
 
     const handleSubmitForm = async (data: SigningFormData) => {

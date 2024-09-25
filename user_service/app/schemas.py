@@ -1,8 +1,6 @@
 from pydantic import BaseModel, EmailStr
 
 
-class DriverOut(BaseModel):
-    id: int
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -30,6 +28,11 @@ class UserOut(UserBase):
 class Token(BaseModel):
     access_token: str
     refresh_token: str
+
+class AuthedUser(BaseModel):
+    access_token: str
+    refresh_token: str
+    user: UserOut
 
 
 class TokenData(BaseModel):

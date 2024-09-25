@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react";
 import useWebSocket from "react-use-websocket";
-import { LatLng } from "leaflet";
 import { PulsingMarker } from "./PulsingMarker/PulsingMarkerComponent";
 import {
   haversineDistance,
   truncateToDecimalPlaces,
 } from "../../utils/distance";
+import { Order } from "../../models/OrderModels";
 
-interface Order {
-  user_id: number;
-  start_point: LatLng;
-  end_point: LatLng;
-}
-
-export const OrdersComponent = () => {
+export const OrdersComponent = ({
+  onOrderApply,
+}: {
+  onOrderApply: (order: Order) => any;
+}) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const { lastMessage } = useWebSocket("ws://localhost:8000/ws/default/");
   useEffect(() => {
@@ -41,7 +39,9 @@ export const OrdersComponent = () => {
           <div>User id: {order.user_id}</div>
           <div>Min trip distance: {distance} km</div>
           <div>
-            <button>Take Order</button>
+            <button onClick={async () => onOrderApply(order)}>
+              Take Order
+            </button>
             <button>Deny Order</button>
           </div>
         </div>

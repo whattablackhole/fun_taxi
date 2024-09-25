@@ -59,26 +59,26 @@ def add_driver_profile(db: Session, user: models.User, driver: models.Driver):
     return user.driver_profile
 
 
-def become_driver(session: Session, user: models.User):
-    has_driver_role = any(user_role.role.name == "driver" for user_role in user.roles)
+def create_driver(session: Session, user: models.User):
+    has_driver_role = any(user_role.name == "driver" for user_role in user.roles)
 
     if has_driver_role:
         raise HTTPException(status_code=400, detail="User already has the driver role")
 
     if user.driver_profile:
         raise HTTPException(status_code=400, detail="User already has a driver profile")
+
+    role = session.query(models.Role).filter(models.Role.name == "driver").first()
+
+    if role is None:
+        raise HTTPException(status_code=400, detail="Role has not found")
+
+    user.roles.append(role)
     
-    with session.begin():
-        role = session.query(models.Role).filter(models.Role.name == "driver").first()
+    driver_profile = models.Driver()
+    user.driver_profile = driver_profile
     
-        if role is None:
-            raise HTTPException(status_code=400, detail="Role is not found")
-    
-        user.roles.append(role)
-        
-        driver_profile = models.Driver()
-        user.driver_profile = driver_profile
-        
+    session.commit()
     session.refresh(user)
     return user
 

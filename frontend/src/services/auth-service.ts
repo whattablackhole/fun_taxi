@@ -1,4 +1,4 @@
-import { TokenData, UserData } from "../models/UserModels";
+import { AuthData, RoleName, TokenData, UserData } from "../models/UserModels";
 
 const authBase = import.meta.env.VITE_AUTH_BASE_URL;
 
@@ -7,10 +7,11 @@ export class AuthService {
   private refreshToken: string | null = null;
   private accessToken: string | null = null;
   private userData: UserData | null = null;
+  private setUserData: any;
 
-  constructor(base: string = authBase) {
+  constructor(setUserData: any,base: string = authBase) {
     this.apiBase = base;
-
+    this.setUserData=  setUserData;
     let refreshToken = localStorage.getItem("refresh_token");
     let accessToken = localStorage.getItem("access_token");
     let userData = localStorage.getItem("user");
@@ -24,12 +25,12 @@ export class AuthService {
 
     if (userData) {
       this.userData = JSON.parse(userData);
+      this.setUserData(this.userData);
     }
   }
 
-  public getUserData() {
-    console.log(this.userData);
-    return this.userData;
+  public checkUserRole(role: RoleName): boolean {
+    return !!this.userData?.roles.some((r) => r.name == role);
   }
 
   public async authenticate() {
@@ -56,8 +57,6 @@ export class AuthService {
     });
 
     if (response.ok) {
-      const data: UserData = await response.json();
-      this.setUser(data);
       return await this.login(username, password);
     }
   }
@@ -76,15 +75,18 @@ export class AuthService {
     });
 
     if (response.ok) {
-      const data: TokenData = await response.json();
+      const data: AuthData = await response.json();
       this.setTokens(data);
+      this.setUser(data.user)
       return true;
     }
+
+    return false;
   }
 
   // temp location
-  public async addUserRole(role: "driver") {
-    const response = await fetch(`${this.apiBase}/users/become_driver`, {
+  public async addUserToDriversGroup() {
+    const response = await fetch(`${this.apiBase}/drivers`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -92,9 +94,11 @@ export class AuthService {
       },
     });
 
+
+
     if (response.ok) {
-      const data = await response.json();
-      console.log(data);
+      const data: UserData = await response.json();
+      this.setUser(data);
     }
   }
 
@@ -126,6 +130,7 @@ export class AuthService {
   private setUser(data: UserData) {
     this.userData = data;
     localStorage.setItem("user", JSON.stringify(data));
+    this.setUserData(this.userData);
   }
 
   private isAccessTokenValid() {

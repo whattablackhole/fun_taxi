@@ -3,18 +3,23 @@ import { useEffect, useState } from "react";
 import { MapNode } from "../../models/MapModels";
 import { PathFinderService } from "../../services/path-finder/path-finder";
 import mockData from "../../../../response_examples/data_with_nodes.json";
-import {
-  CircleMarker,
-  MapContainer,
-  Popup,
-  TileLayer,
-} from "react-leaflet";
+import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import { EndpointsComponent } from "./EndpointsComponent";
 import { PolylineComponent } from "./PolylineComponent";
 import { OrdersComponent } from "./OrdersComponent";
 import "./MapComponent.scss";
+import { RoleBasedComponent } from "../shared/RoleBasedComponent";
+import { Order } from "../../models/OrderModels";
 
-export const MapComponent = () => {
+interface MapComponentProps {
+  handlers?: MapEventHandlers;
+}
+
+export interface MapEventHandlers {
+  onOrderApply?: (order: Order) => any;
+}
+
+export const MapComponent = ({ handlers }: MapComponentProps) => {
   let northWest: LatLngTuple = [52.1, 26];
   let northEast: LatLngTuple = [52.15, 26.2];
 
@@ -51,6 +56,10 @@ export const MapComponent = () => {
       );
   };
 
+  const onOrderApply = async (order: Order) => {
+    await handlers?.onOrderApply?.(order);
+  };
+
   useEffect(() => {
     navigator.buildGraph(mockData.elements as any);
 
@@ -75,12 +84,13 @@ export const MapComponent = () => {
         url="http://localhost:8087/tile/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
+      <RoleBasedComponent exclude={["driver"]}>
+        <EndpointsComponent
+          onEndPointSelectionChange={onEndPointSelectionChange}
+        ></EndpointsComponent>
+      </RoleBasedComponent>
 
-      <EndpointsComponent
-        onEndPointSelectionChange={onEndPointSelectionChange}
-      ></EndpointsComponent>
-
-      {nodes?.map((node) => (
+      {/* {nodes?.map((node) => (
         <CircleMarker
           key={node.id}
           center={[node.lat, node.lon]}
@@ -91,9 +101,11 @@ export const MapComponent = () => {
         >
           <Popup>Node ID: {node.id}</Popup>
         </CircleMarker>
-      ))}
+      ))} */}
       <PolylineComponent nodes={nodes} />
-      <OrdersComponent></OrdersComponent>
+      <RoleBasedComponent include={["driver"]}>
+        <OrdersComponent onOrderApply={onOrderApply}></OrdersComponent>
+      </RoleBasedComponent>
     </MapContainer>
   );
 };
