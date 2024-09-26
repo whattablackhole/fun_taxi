@@ -14,7 +14,7 @@ class Command(BaseCommand):
             'group.id': 'your_group_id',
             'auto.offset.reset': 'earliest',
         })
-        consumer.subscribe(['topic'])
+        consumer.subscribe(['transportation_request_apply'])
         channel_layer = get_channel_layer()
         while True:
             msg = consumer.poll(timeout=1.0)

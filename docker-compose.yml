@@ -42,10 +42,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8087:8082"
-  user_service:
-    container_name: user_service
-    build:
-      context: ./user_service
-      dockerfile: Dockerfile
-    ports:
-      - "8088:80"
+  # user_service:
+  #   container_name: user_service
+  #   build:
+  #     context: ./user_service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8088:80"
