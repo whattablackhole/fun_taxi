@@ -27,7 +27,7 @@ def hello_world(request):
 
 
 @api_view(['POST'])
-def create_order(request):
+def submit_order(request):
     # user = user_service.get_user_from_request(request)
 
     # if user is None:

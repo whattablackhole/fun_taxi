@@ -1,15 +1,29 @@
-import { LatLngBounds, LatLngBoundsExpression, LatLngTuple } from "leaflet";
+import {
+  LatLng,
+  LatLngBounds,
+  LatLngBoundsExpression,
+  LatLngTuple,
+} from "leaflet";
 import { useEffect, useState } from "react";
 import { MapNode } from "../../models/MapModels";
 import { PathFinderService } from "../../services/path-finder/path-finder";
 import mockData from "../../../../response_examples/data_with_nodes.json";
-import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Popup,
+  TileLayer,
+  GeoJSON,
+} from "react-leaflet";
+import { v4 as uuidv4 } from "uuid";
 import { EndpointsComponent } from "./EndpointsComponent";
 import { PolylineComponent } from "./PolylineComponent";
 import { OrdersComponent } from "./OrdersComponent";
 import "./MapComponent.scss";
 import { RoleBasedComponent } from "../shared/RoleBasedComponent";
 import { Order } from "../../models/OrderModels";
+import { NearestDrivers } from "./NearestDrivers/NearestDriversComponent";
+import { GeoJsonObject } from "geojson";
 
 interface MapComponentProps {
   handlers?: MapEventHandlers;
@@ -25,35 +39,57 @@ export const MapComponent = ({ handlers }: MapComponentProps) => {
 
   const navigator = new PathFinderService();
   const [nodes, setNodes] = useState<MapNode[] | null>(null);
-
+  const [geojsonData, setGeojsonData] =
+    useState<{data: GeoJsonObject, hash: string} | null>(null);
   const bounds: LatLngBoundsExpression = new LatLngBounds([
     northWest,
     northEast,
   ]);
-
+  //temp loc
   const onEndPointSelectionChange = async (points: any) => {
-    fetch("http://127.0.0.1:8082/api/trip_request/", {
+    const response = await fetch("http://127.0.0.1:7777/shortest_path", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        user_id: 1,
-        start_point: points.startPoint,
-        end_point: points.endPoint,
+        start_lon: points.startPoint.lng,
+        start_lat: points.startPoint.lat,
+        end_lon: points.endPoint.lng,
+        end_lat: points.endPoint.lat,
       }),
-    })
-      .then((response) => {
-        console.log(response);
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => console.log(data))
-      .catch((error) =>
-        console.error("There was a problem with the fetch operation:", error)
-      );
+    });
+    if (response) {
+      const geoData = await response.json();
+
+      if (geoData.features) {
+        setGeojsonData({data: geoData, hash: uuidv4()});
+      }
+      console.log(geoData);
+    }
+
+    //   fetch("http://127.0.0.1:8082/api/trip_request/", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //     },
+    //     body: JSON.stringify({
+    //       user_id: 1,
+    //       start_point: points.startPoint,
+    //       end_point: points.endPoint,
+    //     }),
+    //   })
+    //     .then((response) => {
+    //       console.log(response);
+    //       if (!response.ok) {
+    //         throw new Error("Network response was not ok");
+    //       }
+    //       return response.json();
+    //     })
+    //     .then((data) => console.log(data))
+    //     .catch((error) =>
+    //       console.error("There was a problem with the fetch operation:", error)
+    //     );
   };
 
   const onOrderApply = async (order: Order) => {
@@ -106,6 +142,10 @@ export const MapComponent = ({ handlers }: MapComponentProps) => {
       <RoleBasedComponent include={["driver"]}>
         <OrdersComponent onOrderApply={onOrderApply}></OrdersComponent>
       </RoleBasedComponent>
+      <NearestDrivers></NearestDrivers>
+      {geojsonData?.data ? (
+        <GeoJSON data={geojsonData?.data} key={geojsonData?.hash}/>
+      ) : null}
     </MapContainer>
   );
 };

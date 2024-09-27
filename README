@@ -9,7 +9,8 @@ Openstreetmap
 3. start driver_service - uvicorn driver_service.asgi:application --reload
 4. start kafka - docker compose up --build
 5. start frontend - npm run dev
-
+6. start auth - uvicorn app.main:app --reload --port  8088
+7. start geo - uvicorn app.main:app --reload --port  7777
 
 
 test queries:
@@ -46,4 +47,10 @@ produce new topic:
 
 ./bin/kafka-topics.sh --create --topic topic-name --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
 
+import osm object:
+
+osm2pgsql -d map_db -U user -W -H localhost -P 5444 c-latest.osm.pbf
+
+
+DB SRID: 3857
 

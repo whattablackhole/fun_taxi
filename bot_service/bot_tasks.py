@@ -5,6 +5,11 @@ from confluent_kafka import Producer
 import json
 import math
 import random
+from psycopg2 import extensions, pool
+import re
+
+
+    
 
 @dataclass
 class Position:
@@ -18,12 +23,31 @@ class DriverGeoPosition:
 
 
 app = Celery('bot_tasks')
+
 app.config_from_object('celeryconfig')
 
+db_pool = pool.SimpleConnectionPool(
+    1,  # Minimum number of connections
+    10,  # Maximum number of connections
+    dbname='map_db',
+    user='user',
+    password='password',
+    host='localhost',
+    port='5444'
+)
+
+def parse_point(point_text) -> Position:
+    match = re.match(r'POINT\(([-\d\.]+) ([-\d\.]+)\)', point_text)
+    if match:
+        lon, lat = map(float, match.groups())
+        return Position(lat, lon)
+    else:
+        raise ValueError("Invalid POINT format")
+    
 
 class BotDriver():
     def __init__(self, init_positon: Position, driver_id: int):
-        self.position = init_positon
+        self.position = self.find_nearest_road_point(init_positon)
         self.driver_id = driver_id
         self.producer = Producer({'bootstrap.servers': 'localhost:9092'})
 
@@ -47,6 +71,27 @@ class BotDriver():
 
         self.position.lat += delta_lat * math.cos(bearing_radians)
         self.position.lng += delta_lng * math.sin(bearing_radians)
+
+    def find_nearest_road_point(self, position: Position):
+        query = f"""
+        SELECT 
+            ST_AsText(ST_Transform(ST_ClosestPoint(l.way, ST_Transform(ST_SetSRID(ST_MakePoint({position.lng}, {position.lat}), 4326), 3857)), 4326)) AS closest_point,
+            ST_Distance(l.way, ST_Transform(ST_SetSRID(ST_MakePoint({position.lng}, {position.lat}), 4326), 3857)) AS distance
+        FROM planet_osm_line l
+        WHERE l.highway IN ('motorway', 'trunk', 'primary', 'secondary', 'residential')
+        ORDER BY distance
+        LIMIT 1;
+        """
+        conn: extensions.connection = db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute(query)
+            result = cur.fetchone()
+            return parse_point(result[0])
+        finally:
+            if cur:
+                cur.close()
+            db_pool.putconn(conn)
 
 def randomize_position(position: Position, radius_km: int) -> Position:
     EARTH_RADIUS_KM = 6371.0
