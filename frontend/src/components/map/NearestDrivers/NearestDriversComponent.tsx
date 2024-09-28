@@ -8,6 +8,7 @@ interface DriverPosition {
     lng: number;
     lat: number;
   }
+  bearing: string
 }
 
 export function NearestDrivers() {
@@ -22,7 +23,7 @@ export function NearestDrivers() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ radius: 30, lat:52.1329457, lon: 26.1130729 }),
+        body: JSON.stringify({ radius: 70, lat:52.1329457, lon: 26.1130729 }),
       });
       if (response.ok) {
         const data: DriverPosition[] = await response.json();
@@ -35,6 +36,6 @@ export function NearestDrivers() {
   }, []);
 
   return driversPositions.map((p, i) => {
-    return <DriverMarker key={i} position={new LatLng(p.position.lat, p.position.lng)}></DriverMarker>;
+    return <DriverMarker key={i} position={new LatLng(p.position.lat, p.position.lng)} bearing={Number.parseFloat(p.bearing)}></DriverMarker>;
   });
 }

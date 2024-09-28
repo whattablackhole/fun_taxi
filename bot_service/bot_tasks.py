@@ -5,93 +5,146 @@ from confluent_kafka import Producer
 import json
 import math
 import random
-from psycopg2 import extensions, pool
-import re
-
-
-    
-
-@dataclass
-class Position:
-    lat: float
-    lng: float
-
-@dataclass
-class DriverGeoPosition:
-    driver_id: int
-    position: Position
+from psycopg2 import connect
+from tesla import Tesla
+import httpx
+from celery.signals import worker_process_init, worker_process_shutdown
+from models import Position, FeatureCollection
+from utils import haversine_distance, parse_point
 
 
 app = Celery('bot_tasks')
-
 app.config_from_object('celeryconfig')
 
-db_pool = pool.SimpleConnectionPool(
-    1,  # Minimum number of connections
-    10,  # Maximum number of connections
-    dbname='map_db',
-    user='user',
-    password='password',
-    host='localhost',
-    port='5444'
-)
+db_conn = None
 
-def parse_point(point_text) -> Position:
-    match = re.match(r'POINT\(([-\d\.]+) ([-\d\.]+)\)', point_text)
-    if match:
-        lon, lat = map(float, match.groups())
-        return Position(lat, lon)
-    else:
-        raise ValueError("Invalid POINT format")
-    
+@worker_process_init.connect
+def init_worker(**kwargs):
+    global db_conn
+    db_conn = connect(
+        dbname='map_db',
+        user='user',
+        password='password',
+        host='localhost',
+        port='5444'
+    )
+
+@worker_process_shutdown.connect
+def shutdown_worker(**kwargs):
+    global db_conn
+    if db_conn:
+        db_conn.close()
+
 
 class BotDriver():
-    def __init__(self, init_positon: Position, driver_id: int):
-        self.position = self.find_nearest_road_point(init_positon)
-        self.driver_id = driver_id
+    def __init__(self, init_pos: Position, driver_id: int):
+        self.car = Tesla()
         self.producer = Producer({'bootstrap.servers': 'localhost:9092'})
-
-    async def stream_geo_position(self):
+        self.position = self.find_nearest_road_point(init_pos)
+        self.destination = None
+        self.driver_id = driver_id
+        self.way_cursor = 0
+        self.node_cursor = 0
+        self.threshold = 25
+        self.speed = 40
+        self.bearing = 0
+        self.route: FeatureCollection | None = None
+    async def start_auto_pilot(self):
         while(True):
-            geo = {
+            while self.route == None or self.route.features == None or len(self.route.features) == 0:
+                self.position = self.find_nearest_road_point(randomize_position(self.position, 5))
+                self.destination = self.find_nearest_road_point(randomize_position(self.position, 10))
+                self.route = await self.get_destination_route(self.position, self.destination)
+                await asyncio.sleep(2)
+                continue
+            if (self.destination == self.position):
+                    self.route = None
+                    self.destination = None
+                    self.way_cursor = 0
+                    self.node_cursor = 0
+                    continue
+            self.move()
+            self.stream_geo_position()
+            await asyncio.sleep(2)
+
+
+    
+    async def get_destination_route(self, init_pos: Position, destination_pos: Position) -> FeatureCollection | None:
+        payload = {
+            "start_lon": init_pos.lng,
+            "start_lat": init_pos.lat,
+            "end_lon": destination_pos.lng,
+            "end_lat": destination_pos.lat
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post("http://127.0.0.1:7777/shortest_path", json=payload)
+        
+        if response.status_code == 200:
+            geo_data = FeatureCollection(**response.json())
+            return geo_data
+
+        else:
+            print(f"Error: Received status code {response.status_code}")
+            return None
+        
+
+    def stream_geo_position(self):
+        geo = {
                 "driver_id": self.driver_id,
-                "position": {"lat": self.position.lat, "lng": self.position.lng}
+                "position": {"lat": self.position.lat, "lng": self.position.lng},
+                "bearing": self.bearing
             }
-            self.producer.produce('driver_geo_position', json.dumps(geo))
-            self.producer.flush()
-            self.move(0.01, 90)
-            await asyncio.sleep(5)
+        self.producer.produce('driver_geo_position', json.dumps(geo))
+        self.producer.flush()
 
-    def move(self, distance_km, bearing_degrees):
-        bearing_radians = math.radians(bearing_degrees)
+    def move(self):
+        geometry = self.route.features[self.way_cursor]['geometry']
 
-        delta_lat = distance_km / 111
+        next_node = geometry['coordinates'][self.node_cursor]
+        next_node_position = Position(lng=next_node[0], lat=next_node[1])
 
-        delta_lng = distance_km / (111 * math.cos(math.radians(self.position.lat)))
+        distance = haversine_distance(self.position, next_node_position)
+        
+        if distance <= self.threshold:
+            if len(geometry['coordinates']) - 1 > self.node_cursor:
+                self.node_cursor += 1
+                return
+            elif len(self.route.features) - 1 > self.way_cursor:
+                self.way_cursor += 1
+                self.node_cursor = 0
+                return
+            else:
+                self.position = self.destination
+                return
+            
+        new_position, bearing = self.car.move_by_bearing(self.position, next_node_position, self.speed)
+        self.position = new_position
+        self.bearing = bearing
 
-        self.position.lat += delta_lat * math.cos(bearing_radians)
-        self.position.lng += delta_lng * math.sin(bearing_radians)
+
 
     def find_nearest_road_point(self, position: Position):
         query = f"""
         SELECT 
             ST_AsText(ST_Transform(ST_ClosestPoint(l.way, ST_Transform(ST_SetSRID(ST_MakePoint({position.lng}, {position.lat}), 4326), 3857)), 4326)) AS closest_point,
             ST_Distance(l.way, ST_Transform(ST_SetSRID(ST_MakePoint({position.lng}, {position.lat}), 4326), 3857)) AS distance
-        FROM planet_osm_line l
+        FROM planet_osm_roads l
         WHERE l.highway IN ('motorway', 'trunk', 'primary', 'secondary', 'residential')
         ORDER BY distance
         LIMIT 1;
         """
-        conn: extensions.connection = db_pool.getconn()
         try:
-            cur = conn.cursor()
+            cur = db_conn.cursor()
             cur.execute(query)
             result = cur.fetchone()
             return parse_point(result[0])
+        except Exception as e:
+            print(e)
+            raise e
         finally:
             if cur:
                 cur.close()
-            db_pool.putconn(conn)
 
 def randomize_position(position: Position, radius_km: int) -> Position:
     EARTH_RADIUS_KM = 6371.0
@@ -121,6 +174,12 @@ def randomize_position(position: Position, radius_km: int) -> Position:
 
 @app.task
 def run_bot(driver_id):
-    position = randomize_position(Position(52.1329457, 26.1130729), 5)
-    bot = BotDriver(position, driver_id)
-    asyncio.run(bot.stream_geo_position())
+    try:
+        position = randomize_position(Position(52.1329457, 26.1130729), 5)
+        bot = BotDriver(position, driver_id)
+        asyncio.run(bot.start_auto_pilot())
+    except Exception as e:
+        print(e)
+
+if __name__ == "__main__":
+    run_bot(1)

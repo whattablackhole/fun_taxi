@@ -1,11 +1,8 @@
 from fastapi import FastAPI
-from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 import redis
 from .kafka_consumer import consume_kafka
-from asyncio import get_event_loop
 from .schemas import DriverSearchArea, Endpoints
 import threading
 import psycopg2
@@ -27,7 +24,6 @@ map_db = psycopg2.connect(
 
 app = FastAPI()
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,7 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-threading.Thread(target=consume_kafka, args=(db,), daemon=True).start()
+threading.Thread(target=consume_kafka, args=(redis.Redis(host='localhost', port=6379, db=0),), daemon=True).start()
 
 @app.post("/nearestdrivers")
 async def get_nearest_drivers(area: DriverSearchArea):
@@ -50,20 +46,21 @@ async def get_nearest_drivers(area: DriverSearchArea):
     )
     results = []
     for driver_id, position in nearby_drivers:
+        bearing = db.hget('driver_bearings', driver_id)
         results.append({
             "driver_id": driver_id,
             "position": {
                 "lng": position[0],
                 "lat": position[1]
-            }
+            },
+            "bearing": bearing
         })
 
     return results
 
 
 @app.post("/shortest_path")
-async def get_nearest_drivers(endpoints: Endpoints):
-    print(endpoints)
+async def get_shortest_path(endpoints: Endpoints):
     try:
         cur = map_db.cursor()
         with open(sql_file_path, "r") as file:

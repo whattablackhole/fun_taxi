@@ -33,7 +33,7 @@ path AS (
         'SELECT osm_id AS id, source, target, ST_Length(way) AS cost FROM planet_osm_roads',
         (SELECT id FROM start_node),
         (SELECT id FROM end_node),
-        directed := false
+        directed := true
     )
 ),
 features AS (

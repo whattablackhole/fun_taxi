@@ -20,10 +20,7 @@ async def consume_kafka():
             print(message.error())
             continue
 
-        print("hello")
-
         value = message.value().decode('utf-8')
-        print(value)
 
         await channel_layer.group_send('drivers_group', {
                 "type": "transportation_request",
