@@ -1,5 +1,7 @@
+use serde::Serialize;
+
 use crate::shared::utils::to_radians;
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct GeoPosition {
     pub lat: f64,
     pub lon: f64
