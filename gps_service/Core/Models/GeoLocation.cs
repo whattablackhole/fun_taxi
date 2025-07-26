@@ -2,7 +2,7 @@ namespace GPS_Service.Models;
 
 public struct GeoLocation()
 {
-    public string lat { get; set; } = string.Empty;
+    public decimal Lat { get; set; }
 
-    public string lon { get; set; } = string.Empty;
+    public decimal Lon { get; set; }
 }

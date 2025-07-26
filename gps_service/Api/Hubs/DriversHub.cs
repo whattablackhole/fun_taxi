@@ -1,3 +1,4 @@
+using System.Text.Json;
 using GPS_Service.Api.Messages;
 using GPS_Service.Core.Interfaces;
 using Microsoft.AspNetCore.SignalR;
@@ -9,27 +10,31 @@ public class DriversHub : Hub
     readonly IDriverLocationService _driverLocationService;
     readonly ILogger<DriversHub> _logger;
 
-    public DriversHub(IDriverLocationService driverLocationService, ILogger<DriversHub> logger)
+    public DriversHub(ILogger<DriversHub> logger, IDriverLocationService driverLocationService)
     {
         _driverLocationService = driverLocationService;
         _logger = logger;
     }
 
-    public async Task SendMessage(string user, DriverBaseMessage message)
+    public async Task SendMessage(DriverMessage message)
     {
         switch (message.Type)
         {
             case DriverMessageType.LocationChange:
-            {
-                var msg = (DriverLocationChangedMessage)message;
+                var payload = message.Payload.Deserialize<DriverLocationChangedMessage>();
                 await _driverLocationService.UpdateDriverLocationChangeAsync(
-                    new UpdateDriverPosition { driverId = user, location = msg.Location }
+                    new UpdateDriverPosition
+                    {
+                        driverId = message.DriverId,
+                        location = payload.Location,
+                    }
                 );
                 break;
-            }
             default:
             {
-                _logger.LogWarning($"Unexpected message from driver: {message.Type} {user}");
+                _logger.LogWarning(
+                    $"Unexpected message from driver: {message.Type}, {message.DriverId}"
+                );
                 break;
             }
         }
