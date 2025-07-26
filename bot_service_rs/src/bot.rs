@@ -5,12 +5,12 @@ use crate::{
     shared::utils::{to_degrees, to_radians},
 };
 use futures_util::{SinkExt, StreamExt};
-use std::{
-    sync::{Arc},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 use tokio::{
-    sync::{RwLock},
+    sync::{
+        mpsc::{Receiver, Sender},
+        RwLock,
+    },
     task::JoinHandle,
 };
 use tokio_tungstenite::{
@@ -27,13 +27,27 @@ pub struct DriverBot {
     pub car_handle: Option<JoinHandle<()>>,
 }
 
-struct Car {
+pub struct Car {
     gps: Arc<RwLock<GPS>>,
     state_sender: tokio::sync::mpsc::Sender<String>,
     rx_command: tokio::sync::mpsc::Receiver<String>,
 }
 
 impl Car {
+    pub fn new(initial_position: GeoPosition) -> (Self, Sender<String>, Receiver<String>) {
+        let (state_tx, state_rx) = tokio::sync::mpsc::channel(32);
+        let (cmd_tx, cmd_rx) = tokio::sync::mpsc::channel(32);
+
+        let car = Car {
+            gps: Arc::new(RwLock::new(GPS::new(initial_position))),
+            state_sender: state_tx,
+            rx_command: cmd_rx,
+        };
+
+        (car, cmd_tx, state_rx)
+    }
+
+    
     pub async fn listen(&mut self) {
         let token: CancellationToken = CancellationToken::new();
 
@@ -113,7 +127,7 @@ impl Car {
 }
 
 impl DriverBot {
-    pub  fn new() -> DriverBot {
+    pub fn new() -> DriverBot {
         return Self {
             state_receiver: None,
             cmd_sender: tokio::sync::watch::Sender::new(None),
@@ -123,26 +137,24 @@ impl DriverBot {
         };
     }
 
-    pub async fn spawn_car(&mut self, initial_position: GeoPosition) {
-        let (cmd_tx, cmd_rx) = tokio::sync::mpsc::channel(32);
-        let (state_tx, mut state_rx) = tokio::sync::mpsc::channel(32);
-
+    pub async fn start_car(
+        &mut self,
+        mut car: Car,
+        mut state_receiver: Receiver<String>,
+        cmd_sender: Sender<String>,
+    ) {
         let car_handle = tokio::spawn(async move {
-            let mut inner = Car {
-                gps: Arc::new(RwLock::new(GPS::new(initial_position))),
-                state_sender: state_tx,
-                rx_command: cmd_rx,
-            };
-            inner.listen().await;
+            car.listen().await;
         });
+
         self.car_handle = Some(car_handle);
-        self.cmd_sender.send_replace(Some(cmd_tx));
+        self.cmd_sender.send_replace(Some(cmd_sender));
 
         let mut receiver = self.connection_sender.subscribe();
 
         tokio::spawn(async move {
             loop {
-                if let Some(msg) = state_rx.recv().await {
+                if let Some(msg) = state_receiver.recv().await {
                     receiver.wait_for(|v| v.is_some()).await.unwrap();
                     let option = receiver.borrow().as_ref().cloned();
                     if let Some(sender) = option {

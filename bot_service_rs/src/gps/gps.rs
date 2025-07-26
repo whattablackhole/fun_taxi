@@ -1,7 +1,8 @@
+use crate::api::geo_http::requests::NavigationInfo;
+use crate::api::geo_http::responses::{NavigationCollection, NavigationFeature, NavigationFeatureSegment, NavigationFeatureStep};
 use crate::consts::GEO_SERVICE_URL;
-use crate::models::response::{NavigationFeature, NavigationFeatureSegment, NavigationFeatureStep};
 use crate::models::{
-    geoposition::GeoPosition, requests::NavigationInfo, response::NavigationCollection,
+    geoposition::GeoPosition
 };
 use crate::shared::utils::haversine_distance;
 
