@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fun-taxi-geo-service
+  labels:
+    app: fun-taxi-geo-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fun-taxi-geo-service
+  template:
+    metadata:
+      labels:
+        app: fun-taxi-geo-service
+    spec:
+      containers:
+        - name: fun-taxi-geo-service
+          image: whattablackhole/fun-taxi-geo_service:latest
+          ports:
+          - containerPort: 80
+          envFrom:
+          - configMapRef:
+              name: fun-taxi-geo-service-config
+          - secretRef:
+              name: fun-taxi-geo-service-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

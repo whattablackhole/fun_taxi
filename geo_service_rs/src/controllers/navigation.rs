@@ -1,3 +1,5 @@
+use std::env;
+
 use crate::{
     models::navigation::NavigationInfo, services::openroute_api_service::OpenRouteApiService,
     tools::env_reader::get_env, AppState,
@@ -14,8 +16,8 @@ pub struct NavigationDependencies {
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.app_data(web::Data::new(NavigationDependencies {
         openroute_api_service: OpenRouteApiService::new(
-            get_env().get("OPEN_SERVICE_API_BASE_URL").unwrap(),
-            get_env().get("OPEN_ROUTES_SERVICE_API_KEY").unwrap(),
+            env::var("OPEN_SERVICE_API_BASE_URL").unwrap(),
+            env::var("OPEN_ROUTES_SERVICE_API_KEY").unwrap(),
         ),
     }))
     .service(

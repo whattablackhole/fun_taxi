@@ -8,10 +8,10 @@ pub struct OpenRouteApiService {
 }
 
 impl OpenRouteApiService {
-    pub fn new(base: &str, api_key: &str) -> Self {
+    pub fn new(base: String, api_key: String) -> Self {
         return Self {
-            base: base.to_string(),
-            api_key: api_key.to_string(),
+            base: base,
+            api_key: api_key,
             client: reqwest::Client::new(),
         };
     }

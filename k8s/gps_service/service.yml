@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fun-taxi-gps-service
+spec:
+  selector:
+    app: fun-taxi-gps-service
+  ports:
+    - protocol: TCP
+      port: 8099
+      targetPort: 80

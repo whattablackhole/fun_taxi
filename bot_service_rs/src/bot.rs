@@ -1,9 +1,13 @@
 use crate::{
-    consts::DRIVER_SERVICE_WS_URL,
+    api::gps_service_messaging::outcoming_messages::{
+        DriverLocationChangedMessage, GeoLocation,
+        GpsMessageType, DriverMessage,
+    },
     gps::gps::GPS,
     models::geoposition::GeoPosition,
     shared::utils::{to_degrees, to_radians},
 };
+use chrono::DateTime;
 use futures_util::{SinkExt, StreamExt};
 use std::{sync::Arc, time::Duration};
 use tokio::{
@@ -15,26 +19,40 @@ use tokio::{
 };
 use tokio_tungstenite::{
     connect_async,
-    tungstenite::{client::IntoClientRequest, Message},
+    tungstenite::{client::IntoClientRequest, Message, Utf8Bytes},
 };
 use tokio_util::sync::CancellationToken;
 
 pub struct DriverBot {
+    id: String,
     state_receiver: Option<tokio::sync::mpsc::Receiver<String>>,
     cmd_sender: tokio::sync::watch::Sender<Option<tokio::sync::mpsc::Sender<String>>>,
-    connection_sender: tokio::sync::watch::Sender<Option<tokio::sync::mpsc::Sender<String>>>,
+    gps_service_sender:
+        tokio::sync::watch::Sender<Option<tokio::sync::mpsc::Sender<GpsServiceMessage>>>,
     pub connection_handle: Option<JoinHandle<()>>,
     pub car_handle: Option<JoinHandle<()>>,
+    driver_service_url: String,
+    gps_service_url: String,
+}
+
+#[derive(Debug)]
+pub enum CarMessage {
+    Update(GeoPosition),
+}
+
+#[derive(Debug)]
+pub enum GpsServiceMessage {
+    Update(GeoPosition),
 }
 
 pub struct Car {
     gps: Arc<RwLock<GPS>>,
-    state_sender: tokio::sync::mpsc::Sender<String>,
+    state_sender: tokio::sync::mpsc::Sender<CarMessage>,
     rx_command: tokio::sync::mpsc::Receiver<String>,
 }
 
 impl Car {
-    pub fn new(initial_position: GeoPosition) -> (Self, Sender<String>, Receiver<String>) {
+    pub fn new(initial_position: GeoPosition) -> (Self, Sender<String>, Receiver<CarMessage>) {
         let (state_tx, state_rx) = tokio::sync::mpsc::channel(32);
         let (cmd_tx, cmd_rx) = tokio::sync::mpsc::channel(32);
 
@@ -47,7 +65,6 @@ impl Car {
         (car, cmd_tx, state_rx)
     }
 
-    
     pub async fn listen(&mut self) {
         let token: CancellationToken = CancellationToken::new();
 
@@ -82,10 +99,13 @@ impl Car {
             };
 
             {
-                let payload: String = serde_json::to_string(&new_current_pos).unwrap();
+                // let payload: String = serde_json::to_string(&new_current_pos).unwrap();
 
-                self.gps.write().await.update_curr_pos(new_current_pos);
-                self.state_sender.send(payload).await.unwrap();
+                self.gps.write().await.update_curr_pos(&new_current_pos);
+                self.state_sender
+                    .send(CarMessage::Update(new_current_pos))
+                    .await
+                    .unwrap();
             }
 
             tokio::time::sleep(Duration::from_secs(3)).await;
@@ -127,20 +147,23 @@ impl Car {
 }
 
 impl DriverBot {
-    pub fn new() -> DriverBot {
+    pub fn new(id: String) -> DriverBot {
         return Self {
+            id: id,
             state_receiver: None,
             cmd_sender: tokio::sync::watch::Sender::new(None),
-            connection_sender: tokio::sync::watch::Sender::new(None),
+            gps_service_sender: tokio::sync::watch::Sender::new(None),
             connection_handle: None,
             car_handle: None,
+            driver_service_url: std::env::var("DRIVER_SERVICE_WS_URL").unwrap(),
+            gps_service_url: std::env::var("GPS_SERVICE_WS_URL").unwrap(),
         };
     }
 
     pub async fn start_car(
         &mut self,
         mut car: Car,
-        mut state_receiver: Receiver<String>,
+        mut state_receiver: Receiver<CarMessage>,
         cmd_sender: Sender<String>,
     ) {
         let car_handle = tokio::spawn(async move {
@@ -150,7 +173,8 @@ impl DriverBot {
         self.car_handle = Some(car_handle);
         self.cmd_sender.send_replace(Some(cmd_sender));
 
-        let mut receiver = self.connection_sender.subscribe();
+        let mut receiver: tokio::sync::watch::Receiver<Option<Sender<GpsServiceMessage>>> =
+            self.gps_service_sender.subscribe();
 
         tokio::spawn(async move {
             loop {
@@ -158,7 +182,14 @@ impl DriverBot {
                     receiver.wait_for(|v| v.is_some()).await.unwrap();
                     let option = receiver.borrow().as_ref().cloned();
                     if let Some(sender) = option {
-                        sender.send(msg).await.unwrap();
+                        match msg {
+                            CarMessage::Update(position) => {
+                                sender
+                                    .send(GpsServiceMessage::Update(position))
+                                    .await
+                                    .unwrap();
+                            }
+                        }
                     }
                 }
             }
@@ -166,11 +197,29 @@ impl DriverBot {
     }
 
     pub async fn establish_connection(&mut self) {
-        println!("{DRIVER_SERVICE_WS_URL}");
-        let request = DRIVER_SERVICE_WS_URL.into_client_request().unwrap();
+        let id = self.id.clone();
+        let request = self
+            .driver_service_url
+            .clone()
+            .into_client_request()
+            .unwrap();
         let mut connection = connect_async(request).await.unwrap().0;
-        let (cmd_tx, mut cmd_rx) = tokio::sync::mpsc::channel::<String>(32);
-        self.connection_sender.send_replace(Some(cmd_tx));
+        let request = self.gps_service_url.clone().into_client_request().unwrap();
+        let mut gps_connection = connect_async(request).await.unwrap().0;
+        let handshake = serde_json::json!({
+            "protocol": "json",
+            "version": 1
+        })
+        .to_string()
+            + "\u{1e}";
+        gps_connection
+            .send(Message::Text(handshake.into()))
+            .await
+            .unwrap();
+
+        let (cmd_tx, mut cmd_rx) = tokio::sync::mpsc::channel::<GpsServiceMessage>(32);
+        self.gps_service_sender.send_replace(Some(cmd_tx));
+
         // TODO: use seperate channel for handling messages betwee Connection <-> Driver <-> Car
         // currently it use such pattern
         // Driver -> Connection
@@ -196,11 +245,37 @@ impl DriverBot {
                         }
                     }
                     Some(cmd) = cmd_rx.recv() => {
-                        connection.send(Message::Text(cmd.into())).await.unwrap();
+                        match cmd {
+                            GpsServiceMessage::Update(geo_position) => {
+                                gps_connection.send(Message::Text(Utf8Bytes::from_static("w"))).await.unwrap();
+                            },
+                        }
                     }
                 }
             }
         });
+
         self.connection_handle = Some(connection_handle);
+    }
+
+    fn signal_r_message() {
+        // test
+        let msg = DriverMessage {
+            r#type: GpsMessageType::LocationUpdate,
+            driver_id: "1".to_string(),
+            payload: DriverLocationChangedMessage {
+                location: GeoLocation { lat: 5.0, lon: 5.0 },
+                sent_at: DateTime::default(),
+            },
+        };
+        let signalr_message = format!(
+            "{}\u{001e}",
+            serde_json::json!({
+                "type": 1,
+                "target": "SendMessage",
+                "arguments": [msg]
+            })
+        );
+        println!("{:?}", signalr_message);
     }
 }

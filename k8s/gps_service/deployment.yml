@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fun-taxi-gps-service
+  labels:
+    app: fun-taxi-gps-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fun-taxi-gps-service
+  template:
+    metadata:
+      labels:
+        app: fun-taxi-gps-service
+    spec:
+      containers:
+        - name: fun-taxi-gps-service
+          image: whattablackhole/fun-taxi-gps_service:latest
+          ports:
+          - containerPort: 80
+          envFrom:
+          - configMapRef:
+              name: fun-taxi-gps-service-config
+          - secretRef:
+              name: fun-taxi-gps-service-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+                

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fun-taxi-gps-service-config
+data:
+  ASPNETCORE_ENVIRONMENT: "Kubernetes"
+  Logging__LogLevel__Default: "Information"
+  DOTNET_USE_RUNNING_IN_CONTAINER: "true"
+  ASPNETCORE_URLS: "http://+:80"

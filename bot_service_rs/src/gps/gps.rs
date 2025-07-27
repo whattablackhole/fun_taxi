@@ -1,11 +1,9 @@
 use crate::api::geo_http::requests::NavigationInfo;
 use crate::api::geo_http::responses::{NavigationCollection, NavigationFeature, NavigationFeatureSegment, NavigationFeatureStep};
-use crate::consts::GEO_SERVICE_URL;
 use crate::models::{
     geoposition::GeoPosition
 };
 use crate::shared::utils::haversine_distance;
-
 pub struct GPS {
     current_position: GeoPosition,
     _current_bearing: f64,
@@ -15,6 +13,7 @@ pub struct GPS {
     current_step_cursor: usize,
     current_geometry_cursor: usize,
     threshold: f64,
+    geo_service_url: String
 }
 
 impl GPS {
@@ -28,13 +27,14 @@ impl GPS {
             current_step_cursor: 0,
             current_geometry_cursor: 0,
             threshold: 25.0,
+            geo_service_url: std::env::var("GEO_SERVICE_URL").unwrap()
         };
     }
 
     // TODO:
     // add reset logic
 
-    pub fn update_curr_pos(&mut self, pos: GeoPosition) {
+    pub fn update_curr_pos(&mut self, pos: &GeoPosition) {
         self.current_position.lat = pos.lat;
         self.current_position.lon = pos.lon;
         //  TODO: stream to outsource
@@ -133,7 +133,7 @@ impl GPS {
         let client = reqwest::Client::new();
         let request = NavigationInfo::new(&self.current_position, &destination, "driving-car");
         let response = client
-            .post(format!("{GEO_SERVICE_URL}/navigation"))
+            .post(format!("{}/navigation", &self.geo_service_url))
             .json(&request)
             .send()
             .await;

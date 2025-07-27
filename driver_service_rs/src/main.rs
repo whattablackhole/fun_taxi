@@ -1,9 +1,11 @@
+use std::env;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use actix_web::http::StatusCode;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use actix_ws::Session;
+use dotenv::from_filename;
 
 use crate::infrastructure::streaming::driver_data_producer::DriverDataProducer;
 use crate::web_api::controllers::driver_controller::DriverController;
@@ -29,7 +31,13 @@ impl AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    load_environment();
+
     let app_state = web::Data::new(Arc::new(AppState::new()));
+    let address = env::var("SERVER_IP_ADRESS").unwrap();
+    let port =  u16::from_str_radix( &env::var("SERVER_PORT").unwrap(), 10).unwrap();
+
+    println!("Starting server on {} {}", address, port);
 
     HttpServer::new(move || {
         App::new()
@@ -62,7 +70,14 @@ async fn main() -> std::io::Result<()> {
         //     })
         // )
     })
-    .bind(("0.0.0.0", 7077))?
+    .bind((address, port))?
     .run()
     .await
+}
+
+
+fn load_environment() {
+    let env = env::var("APP_ENV").unwrap_or_else(|_| "dev".into());
+    let filename = format!(".env.{}", env);
+    from_filename(&filename).ok();
 }
