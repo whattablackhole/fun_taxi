@@ -21,13 +21,10 @@ public class DriversHub : Hub
         switch (message.Type)
         {
             case DriverMessageType.LocationChange:
+                // TODO: introduce try catch send error.
                 var payload = message.Payload.Deserialize<DriverLocationChangedMessage>();
                 await _driverLocationService.UpdateDriverLocationChangeAsync(
-                    new UpdateDriverPosition
-                    {
-                        driverId = message.DriverId,
-                        location = payload.Location,
-                    }
+                    new DriverPosition { DriverId = message.DriverId, Location = payload.Location }
                 );
                 break;
             default:
