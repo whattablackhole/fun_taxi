@@ -217,6 +217,10 @@ impl DriverBot {
             .await
             .unwrap();
 
+            gps_connection
+            .send(Message::Text(self.signal_r_message().into()))
+            .await
+            .unwrap();  
         let (cmd_tx, mut cmd_rx) = tokio::sync::mpsc::channel::<GpsServiceMessage>(32);
         self.gps_service_sender.send_replace(Some(cmd_tx));
 
@@ -258,7 +262,7 @@ impl DriverBot {
         self.connection_handle = Some(connection_handle);
     }
 
-    fn signal_r_message() {
+    fn signal_r_message(&self) -> String {
         // test
         let msg = DriverMessage {
             r#type: GpsMessageType::LocationUpdate,
@@ -276,6 +280,6 @@ impl DriverBot {
                 "arguments": [msg]
             })
         );
-        println!("{:?}", signalr_message);
+        return signalr_message;
     }
 }

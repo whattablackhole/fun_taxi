@@ -18,11 +18,17 @@ public class DriversHub : Hub
 
     public async Task SendMessage(DriverMessage message)
     {
+        _logger.LogDebug("Received DriverMessage: {@DriverMessage}", message);
+
         switch (message.Type)
         {
             case DriverMessageType.LocationChange:
                 // TODO: introduce try catch send error.
                 var payload = message.Payload.Deserialize<DriverLocationChangedMessage>();
+                _logger.LogDebug(
+                    "Processing LocationChange DriverMessage: {@DriverMessage}",
+                    payload
+                );
                 await _driverLocationService.UpdateDriverLocationChangeAsync(
                     new DriverPosition { DriverId = message.DriverId, Location = payload.Location }
                 );

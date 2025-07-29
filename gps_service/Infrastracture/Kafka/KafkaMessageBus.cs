@@ -27,12 +27,6 @@ internal class KafkaMessageBus : IProtobufMessageBusProducer, IDisposable
         _logger.LogInformation("KafkaMessageBus initialized.");
     }
 
-    public Task ProduceAsync<T>(string topic, string key, T message)
-        where T : IMessage<T>, new()
-    {
-        throw new NotImplementedException();
-    }
-
     public async Task ProduceAsync<T>(
         string topic,
         string key,
@@ -41,6 +35,8 @@ internal class KafkaMessageBus : IProtobufMessageBusProducer, IDisposable
     )
         where T : IMessage<T>, new()
     {
+        _logger.LogDebug("Produce operation to topic '{Topic}' was started.", topic);
+
         if (_disposed)
         {
             throw new ObjectDisposedException(

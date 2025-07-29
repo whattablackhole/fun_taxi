@@ -34,7 +34,7 @@ async fn main() -> std::io::Result<()> {
     load_environment();
 
     let app_state = web::Data::new(Arc::new(AppState::new()));
-    let address = env::var("SERVER_IP_ADRESS").unwrap();
+    let address = env::var("SERVER_IP_ADDRESS").unwrap();
     let port =  u16::from_str_radix( &env::var("SERVER_PORT").unwrap(), 10).unwrap();
 
     println!("Starting server on {} {}", address, port);

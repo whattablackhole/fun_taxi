@@ -4,7 +4,7 @@ use serde::Serialize;
 
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub  struct GeoLocation {
     pub lat: f64,
     pub lon: f64,
@@ -26,14 +26,14 @@ impl From<GpsMessageType> for u8 {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub  struct DriverLocationChangedMessage {
     pub location: GeoLocation,
     pub sent_at: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct DriverMessage {
     pub r#type: GpsMessageType,
     pub driver_id: String,

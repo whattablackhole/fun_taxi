@@ -6,14 +6,23 @@ namespace GPS_Service.Core.Services;
 internal class DriverLocationService : IDriverLocationService
 {
     readonly IProtobufMessageBusProducer _messageBus;
+    readonly ILogger<IDriverLocationService> _logger;
 
-    public DriverLocationService(IProtobufMessageBusProducer messageBus)
+    public DriverLocationService(
+        IProtobufMessageBusProducer messageBus,
+        ILogger<IDriverLocationService> logger
+    )
     {
         _messageBus = messageBus;
+        _logger = logger;
     }
 
     public async Task UpdateDriverLocationChangeAsync(DriverPosition updateDriverLocation)
     {
+        _logger.LogDebug(
+            "Start producing new DriverPosition: {@DriverMessage}",
+            updateDriverLocation
+        );
         try
         {
             await _messageBus.ProduceAsync(
@@ -22,7 +31,7 @@ internal class DriverLocationService : IDriverLocationService
                 new UpdateDriverPositionPayload
                 {
                     DriverId = updateDriverLocation.DriverId,
-                    Location =
+                    Location = new GeoLocation
                     {
                         Latitude = updateDriverLocation.Location.Lat,
                         Longitude = updateDriverLocation.Location.Lon,
@@ -30,9 +39,13 @@ internal class DriverLocationService : IDriverLocationService
                 }
             );
         }
-        catch
+        catch (Exception ex)
         {
-            // TODO
+            _logger.LogWarning(
+                "Exception occured while producing gps_driver_position {@Exception}",
+                ex
+            );
+            throw;
         }
     }
 }

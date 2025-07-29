@@ -1,0 +1,1 @@
+pub mod fun_taxi_messages_proto_gps;
