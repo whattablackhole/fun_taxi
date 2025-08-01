@@ -3,7 +3,8 @@ FROM rust:1.88.0 AS build
 RUN apt-get update && \
     apt-get install -y \
     build-essential \
-    cmake
+    cmake \
+    protobuf-compiler
 
 RUN USER=root cargo new --bin driver_service
 
@@ -18,6 +19,9 @@ COPY ./.cargo ./.cargo
 RUN cargo build --release
 RUN rm src/*.rs
 
+
+COPY ./proto ./proto
+COPY ./build.rs ./build.rs
 COPY ./src ./src
 
 RUN rm ./target/release/deps/driver_service*

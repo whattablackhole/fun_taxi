@@ -1,7 +1,10 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
-use crate::AppState;
-use actix_web::{rt, web, Error, HttpRequest, HttpResponse};
+use crate::{
+    web_api::dtos::start_driver_dto::{AvailableTripsDto, GeoPositionDto, GetAvailableTripsDto},
+    AppState,
+};
+use actix_web::{rt, web, Error, HttpRequest, HttpResponse, Responder};
 use actix_ws::AggregatedMessage;
 use futures_util::StreamExt;
 use serde_json::Value;
@@ -27,6 +30,34 @@ pub struct CustomPosition {
 pub struct DriverController {}
 
 impl DriverController {
+    pub async fn get_available_trips(
+        payload: web::Json<GetAvailableTripsDto>,
+        app_state: web::Data<Arc<AppState>>,
+    ) -> impl Responder {
+        let mut service_option = app_state.trips_finder.lock().await;
+        let service = service_option.as_mut().unwrap();
+        let trips = service
+            .get_available_trips(payload.lat, payload.lon, payload.radius)
+            .await
+            .unwrap();
+        let response: Vec<AvailableTripsDto> = trips
+            .iter()
+            .map(|t| AvailableTripsDto {
+                
+                id: Uuid::from_str(&t.id).unwrap(),
+                start: GeoPositionDto {
+                    lat: t.start_lat,
+                    lon: t.start_lon,
+                },
+                end: GeoPositionDto {
+                    lat: t.end_lat,
+                    lon: t.end_lon,
+                },
+            })
+            .collect();
+        HttpResponse::Ok().json(response)
+    }
+
     pub async fn connect_with_bot_driver(
         req: HttpRequest,
         stream: web::Payload,
@@ -39,9 +70,9 @@ impl DriverController {
             .max_continuation_size(2_usize.pow(20));
 
         {
-            let mut session_guard = app_state.driver_session.lock().unwrap();
+            let mut session_option = app_state.driver_session.lock().await;
 
-            session_guard.replace(session.clone());
+            session_option.replace(session.clone());
         }
 
         rt::spawn(async move {

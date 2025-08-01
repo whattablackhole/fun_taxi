@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// TODO: setup dotnetcore and rust package naming options
+
+package fun_taxi_messages_proto_gps;
+
+message GeoLocation {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message UpdateDriverPositionPayload {
+  string driverId = 1;
+  GeoLocation location = 2;
+}

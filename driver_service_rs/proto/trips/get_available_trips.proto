@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package fun_taxi_messages_proto_trips;
+
+
+message Trip {
+    string id = 1;
+    double startLat = 2;
+    double startLon = 3;
+    double endLon = 4;
+    double endLat = 5;
+}
+
+
+message AvailableTripsRequest {
+  double lat = 1;
+  double lon = 2;
+  int32 radius = 3;
+}
+
+
+message AvailableTripsReply {
+  repeated Trip trips = 1;
+}
+
+service TripsFinderService {
+  rpc GetAvailableTrips (AvailableTripsRequest) returns (AvailableTripsReply);
+}

@@ -9,7 +9,6 @@ using PassengerService.Infrastructure.MessageBrockers;
 using PassengerService.Mapping;
 
 var builder = WebApplication.CreateBuilder(args);
-
 var appConfig = builder.Configuration;
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+// TODO: setup dotnetcore and rust package naming options
+
+package fun_taxi_messages_proto_trips;
+
+message TripRequested {
+  string id = 1;
+  string userId = 2;
+  double startLat = 3;
+  double startLon = 4;
+  double endLat = 5;
+  double endLon = 6;
+}
