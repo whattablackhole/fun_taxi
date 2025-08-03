@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-package fun_taxi_messages_proto_gps;
+package fun_taxi_messages_proto.gps.v1;
+option csharp_namespace = "FunTaxi.Messages.Gps.V1";
 
 message GeoLocation {
   double latitude = 1;

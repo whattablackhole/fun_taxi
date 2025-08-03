@@ -1,14 +1,13 @@
 use std::env;
 use std::sync::Arc;
 
-use crate::domain::services::trips_finder_service::TripsFinderService;
-use crate::infrastructure::streaming::driver_data_producer::DriverDataProducer;
 use crate::web_api::controllers::driver_controller::DriverController;
 use actix_web::http::StatusCode;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpServer};
 use actix_ws::Session;
 use dotenv::from_filename;
 use tokio::sync::Mutex;
+use tonic::transport::{Channel, Endpoint};
 
 pub mod domain;
 pub mod infrastructure;
@@ -17,8 +16,8 @@ pub mod web_api;
 pub struct AppState {
     // tbd
     driver_session: Mutex<Option<Session>>,
+    grpc_channel: Channel,
     // driver_data_producer: Option<DriverDataProducer>,
-    trips_finder: Mutex<Option<TripsFinderService>>,
 }
 
 impl AppState {
@@ -26,15 +25,13 @@ impl AppState {
         Self {
             driver_session: Mutex::new(None),
             // driver_data_producer: Some(DriverDataProducer::new("localhost:9092")),
-            trips_finder: Mutex::new(Some(
-                TripsFinderService::new(
-                    env::var("TRIPS_COORDINATOR_IP_ADDRESS")
-                        .unwrap()
-                        .to_string(),
-                )
-                .await
-                .unwrap(),
-            )),
+            grpc_channel: {
+                let endpoint =
+                    Endpoint::from_shared(env::var("GEO_SERVICE_GRPC_ADDRESS").unwrap())
+                        .unwrap();
+                let channel = endpoint.connect_lazy();
+                channel
+            },
         }
     }
 }

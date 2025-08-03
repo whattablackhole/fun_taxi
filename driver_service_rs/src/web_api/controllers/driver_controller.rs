@@ -1,6 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use crate::{
+    domain::services::trips_finder_service::TripsFinderService,
     web_api::dtos::start_driver_dto::{AvailableTripsDto, GeoPositionDto, GetAvailableTripsDto},
     AppState,
 };
@@ -34,8 +35,7 @@ impl DriverController {
         payload: web::Json<GetAvailableTripsDto>,
         app_state: web::Data<Arc<AppState>>,
     ) -> impl Responder {
-        let mut service_option = app_state.trips_finder.lock().await;
-        let service = service_option.as_mut().unwrap();
+        let mut service = TripsFinderService::new(app_state.grpc_channel.clone());
         let trips = service
             .get_available_trips(payload.lat, payload.lon, payload.radius)
             .await
@@ -43,7 +43,6 @@ impl DriverController {
         let response: Vec<AvailableTripsDto> = trips
             .iter()
             .map(|t| AvailableTripsDto {
-                
                 id: Uuid::from_str(&t.id).unwrap(),
                 start: GeoPositionDto {
                     lat: t.start_lat,
