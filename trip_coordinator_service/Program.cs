@@ -1,29 +1,14 @@
 using MassTransit;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using StackExchange.Redis;
 using TripCoordinatorService.Infrastructure.MessageBrockers;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddGrpc();
 
 // TEMP
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var configuration = builder.Configuration.GetConnectionString("Redis")!;
     return ConnectionMultiplexer.Connect(configuration);
-});
-
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(
-        int.Parse(builder.Configuration["GRPC_PORT"]!),
-        listenOptions =>
-        {
-            listenOptions.Protocols = HttpProtocols.Http2;
-            // listenOptions.UseHttps();
-        }
-    );
 });
 
 builder.Services.AddMassTransit(
@@ -51,7 +36,5 @@ builder.Services.AddMassTransit(
     }
 );
 var app = builder.Build();
-
-app.MapGrpcService<TripsFinderServiceImpl>();
 
 app.Run();

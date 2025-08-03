@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-// TODO: setup dotnetcore and rust package naming options
+package fun_taxi_messages_proto.trips.v1;
+option csharp_namespace = "FunTaxi.Messages.Trips.V1";
 
-package fun_taxi_messages_proto_trips;
-
-message TripRequested {
+message PassengerTripRequested {
   string id = 1;
   string userId = 2;
   double startLat = 3;

@@ -18,7 +18,38 @@
     <PackageReference Include="NRedisStack" Version="1.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <Protobuf Include="proto\trips\get_available_trips.proto" GrpcServices="Server" />
-    <Protobuf Include="proto\trips\trip_requested.proto" GrpcServices="Server" />
+    <Protobuf Include="proto\trips\v1\trip.proto" GrpcServices="Client" />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_events\passenger_trip_requested.proto"
+      GrpcServices="Client"
+    />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_commands\trip_geoposition_add.proto"
+      GrpcServices="Client"
+    />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_commands\trip_geoposition_remove.proto"
+      GrpcServices="Client"
+    />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_events\trip_cancellation_requested.proto"
+      GrpcServices="Client"
+    />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_events\driver_trip_accepted.proto"
+      GrpcServices="Client"
+    />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_events\trip_completion_requested.proto"
+      GrpcServices="Client"
+    />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_events\trip_cancelled_by_user.proto"
+      GrpcServices="Client"
+    />
+    <Protobuf
+      Include="proto\trips\v1\trip_state_events\trip_assigned_to_driver.proto"
+      GrpcServices="Client"
+    />
   </ItemGroup>
 </Project>
