@@ -1,1 +1,0 @@
-celery -A bot_tasks worker --loglevel=info
