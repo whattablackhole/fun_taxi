@@ -1,60 +1,77 @@
 mod consumers;
 mod controllers;
 mod models;
-mod services;
-mod tools;
 mod protos;
+mod services;
 use std::env;
 
-use actix_cors::Cors;
-use actix_web::{web, App, HttpServer};
+use crate::{
+    consumers::trips::spawn_trips_channel,
+    protos::trips::trips_finder_service_server::TripsFinderServiceServer,
+    services::trips_finder::TripsFinderServiceImpl,
+};
 use consumers::geoposition::spawn_long_running_kafka_processor;
 use dotenv::from_filename;
-
-struct AppState {
-    pub _app_name: String,
-}
+use redis::Client;
+use tonic::transport::Server;
 
 #[tokio::main]
 async fn main() -> () {
-    std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
+
     load_environment();
 
-    let address = env::var("SERVER_IP_ADDRESS").expect("Resolving SERVER_IP_ADDRESS var failed");
-    let port = u16::from_str_radix(
-        &env::var("SERVER_PORT").expect("Resolving SERVER_PORT var failed"),
-        10,
-    )
-    .expect("Converting SERVER_PORT into u16 failed");
-    let brokers = env::var("KAFKA_BROKERS").expect("Resolving KAFKA_BROKERS var failed");
+    let kafka_handle: tokio::task::JoinHandle<Result<(), rdkafka::error::KafkaError>> =
+        spawn_long_running_kafka_processor(
+            env::var("KAFKA_BROKERS").expect("Resolving KAFKA_BROKERS var failed"),
+            "geo_position_service_group".to_string(),
+            vec!["gps_driver_position".to_string()],
+        )
+        .await;
 
-    let kafka_handle = spawn_long_running_kafka_processor(
-        brokers,
-        "geo_position_service_group".to_string(),
-        vec!["gps_driver_position".to_string()],
-    ).await;
+    let message_bus_handle = spawn_trips_channel().await;
 
-    let server = HttpServer::new(|| {
-        App::new()
-            .wrap(Cors::permissive())
-            .app_data(web::Data::new(AppState {
-                _app_name: String::from("Taxi"),
-            }))
-            .configure(controllers::navigation::config)
-    })
-    .bind((address, port))
-    .expect("Binding address and port failed")
-    .run();
+    let client =
+        Client::open(env::var("REDIS_ADDRESS").expect("REDIS_ADDRESS var resolving failed"))
+            .expect("redis client creation failed");
+
+    let redis: redis::aio::MultiplexedConnection = client
+        .get_multiplexed_async_connection()
+        .await
+        .expect("redis multiplexed connection creation failed");
+
+    let grpc_handle = Server::builder()
+        .add_service(TripsFinderServiceServer::new(TripsFinderServiceImpl::new(
+            redis,
+        )))
+        .serve(env::var("GRPC_SERVER_ADDRESS").unwrap().parse().unwrap());
 
     tokio::select! {
-        _ = kafka_handle => {
-            println!("Kafka processor finished, exiting");
-        }
-        _ = server => {
-            println!("HTTP server finished, exiting");
+    result = kafka_handle => {
+        match result {
+            Ok(Ok(())) => println!("Kafka finished successfully"),
+            Ok(Err(e)) => eprintln!("Kafka returned an error: {:?}", e),
+            Err(e) => eprintln!("Kafka task panicked or was cancelled: {:?}", e),
         }
     }
+
+    result = message_bus_handle => {
+        match result {
+            Ok(Ok(())) => println!("Message bus finished successfully"),
+            Ok(Err(e)) => eprintln!("Message bus returned an error: {:?}", e),
+            Err(e) => eprintln!("Message bus task panicked or was cancelled: {:?}", e),
+        }
+    }
+
+    result = grpc_handle => {
+        match result {
+            Ok(()) => println!("gRPC finished successfully"),
+            Err(e) => eprintln!("gRPC task failed: {:?}", e),
+        }
+    }
+       
+
+}
 }
 
 fn load_environment() {

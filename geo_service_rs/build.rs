@@ -1,28 +1,20 @@
-use std::io::Result;
-use std::fs;
-use prost_build::Config;
+use std::error::Error;
 
-fn main() -> Result<()> {
-    let mut config = Config::new();
-    // comment out when not needed?
-    config.compile_well_known_types();
-   
-    config.out_dir("src/protos");
+fn main() -> Result<(), Box<dyn Error>> {
+    tonic_prost_build::configure()
+        .build_server(true)
 
-    let proto_files: Vec<_> = fs::read_dir("../proto")?
-        .filter_map(Result::ok)
-        .filter(|entry| {
-            if let Some(extension) = entry.path().extension() {
-                return extension == "proto";
-            }
-            false
-        })
-        .map(|entry| entry.path())
-        .collect();
+        .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
+        .type_attribute(".", "#[serde(rename_all=\"camelCase\")]")
 
-    let proto_files: Vec<_> = proto_files.iter()
-        .map(|path| path.to_str().unwrap())
-        .collect();
-    config.compile_protos(&proto_files, &["../proto"])?;
+        .compile_protos(
+            &[
+                "proto/gps/v1/update_driver_position.proto",
+                "proto/trips/v1/trip_state_commands/trip_geoposition_add.proto",
+                "proto/trips/v1/trip.proto",
+                "proto/trips/v1/trips_finder.proto",
+            ],
+            &["proto"],
+        )?;
     Ok(())
 }

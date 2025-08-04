@@ -1,12 +1,12 @@
 use std::env;
 
 use crate::{
-    models::navigation::NavigationInfo, services::openroute_api_service::OpenRouteApiService,
-    tools::env_reader::get_env, AppState,
+    models::navigation::NavigationInfo,
+    services::openroute_api_service::OpenRouteApiService,
 };
 use actix_web::{
-    web::{self, Bytes},
     HttpResponse, Responder,
+    web::{self, Bytes},
 };
 
 pub struct NavigationDependencies {
@@ -20,10 +20,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             env::var("OPEN_ROUTES_SERVICE_API_KEY").unwrap(),
         ),
     }))
-    .service(
-        web::scope("/navigation")
-            .route("", web::post().to(get_navigation_details))
-    );
+    .service(web::scope("/navigation").route("", web::post().to(get_navigation_details)));
     // NOTE: to customize error response
     // .app_data(web::JsonConfig::default().error_handler(|e, r| {
     //     match e {
@@ -35,7 +32,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     //     }
     // }));
 }
-
 
 async fn get_navigation_details(
     info: web::Json<NavigationInfo>,
@@ -49,7 +45,6 @@ async fn get_navigation_details(
 
     HttpResponse::Ok().body(RESPONSE)
 }
-
 
 const RESPONSE: &'static str = r#"
 {

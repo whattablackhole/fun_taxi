@@ -7,7 +7,7 @@ use rdkafka::config::{ClientConfig, RDKafkaLogLevel};
 use rdkafka::consumer::{
     stream_consumer::StreamConsumer, BaseConsumer, Consumer, ConsumerContext, Rebalance,
 };
-use rdkafka::error::KafkaResult;
+use rdkafka::error::{KafkaError, KafkaResult};
 use rdkafka::message::{Message, ToBytes};
 use rdkafka::topic_partition_list::TopicPartitionList;
 use redis::geo::Coord;
@@ -15,7 +15,7 @@ use redis::{Client, RedisResult};
 use schema_registry_converter::async_impl::proto_raw::ProtoRawDecoder;
 use schema_registry_converter::async_impl::schema_registry::SrSettings;
 
-use crate::protos::fun_taxi_messages_proto_gps::UpdateDriverPositionPayload;
+use crate::protos::gps::UpdateDriverPositionPayload;
 use redis::AsyncCommands;
 struct CustomContext;
 
@@ -39,7 +39,7 @@ pub async fn spawn_long_running_kafka_processor(
     brokers: String,
     group_id: String,
     topics: Vec<String>,
-) -> tokio::task::JoinHandle<()> {
+) -> tokio::task::JoinHandle<Result<(), KafkaError>> {
     let handle = tokio::spawn(async move {
         let client =
             Client::open(env::var("REDIS_ADDRESS").expect("REDIS_ADDRESS var resolving failed"))
@@ -71,7 +71,7 @@ pub async fn spawn_long_running_kafka_processor(
 
         loop {
             match consumer.recv().await {
-                Err(e) => println!("Kafka error: {:?}", e),
+                Err(e) => return Err(e),
                 Ok(m) => match decoder.decode(m.payload()).await {
                     Ok(result_option) => match result_option {
                         Some(result) => {

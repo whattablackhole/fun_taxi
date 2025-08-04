@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package fun_taxi_messages_proto.gps.v1;
+option csharp_namespace = "FunTaxi.Messages.Gps.V1";
+
+message GeoLocation {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message UpdateDriverPositionPayload {
+  string driverId = 1;
+  GeoLocation location = 2;
+}
