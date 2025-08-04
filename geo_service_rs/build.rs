@@ -11,6 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             &[
                 "proto/gps/v1/update_driver_position.proto",
                 "proto/trips/v1/trip_state_commands/trip_geoposition_add.proto",
+                "proto/trips/v1/trip_state_commands/trip_geoposition_remove.proto",
                 "proto/trips/v1/trip.proto",
                 "proto/trips/v1/trips_finder.proto",
             ],

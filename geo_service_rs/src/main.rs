@@ -2,11 +2,13 @@ mod consumers;
 mod controllers;
 mod models;
 mod protos;
+mod repositories;
 mod services;
+mod traits;
 use std::env;
 
 use crate::{
-    consumers::trips::spawn_trips_channel,
+    consumers::trips::spawn_trip_geo_commands_consumer,
     protos::trips::trips_finder_service_server::TripsFinderServiceServer,
     services::trips_finder::TripsFinderServiceImpl,
 };
@@ -28,7 +30,7 @@ async fn main() -> () {
         )
         .await;
 
-    let message_bus_handle = spawn_trips_channel().await;
+    let message_bus_handle = spawn_trip_geo_commands_consumer().await;
 
     let client =
         Client::open(env::var("REDIS_ADDRESS").expect("REDIS_ADDRESS var resolving failed"))
@@ -43,35 +45,32 @@ async fn main() -> () {
         .add_service(TripsFinderServiceServer::new(TripsFinderServiceImpl::new(
             redis,
         )))
-
         .serve(env::var("GRPC_SERVER_ADDRESS").unwrap().parse().unwrap());
 
     tokio::select! {
-    result = kafka_handle => {
-        match result {
-            Ok(Ok(())) => println!("Kafka finished successfully"),
-            Ok(Err(e)) => eprintln!("Kafka returned an error: {:?}", e),
-            Err(e) => eprintln!("Kafka task panicked or was cancelled: {:?}", e),
+        result = kafka_handle => {
+            match result {
+                Ok(Ok(())) => println!("Kafka finished successfully"),
+                Ok(Err(e)) => eprintln!("Kafka returned an error: {:?}", e),
+                Err(e) => eprintln!("Kafka task panicked or was cancelled: {:?}", e),
+            }
+        }
+
+        result = message_bus_handle => {
+            match result {
+                Ok(Ok(())) => println!("Message bus finished successfully"),
+                Ok(Err(e)) => eprintln!("Message bus returned an error: {:?}", e),
+                Err(e) => eprintln!("Message bus task panicked or was cancelled: {:?}", e),
+            }
+        }
+
+        result = grpc_handle => {
+            match result {
+                Ok(()) => println!("gRPC finished successfully"),
+                Err(e) => eprintln!("gRPC task failed: {:?}", e),
+            }
         }
     }
-
-    result = message_bus_handle => {
-        match result {
-            Ok(Ok(())) => println!("Message bus finished successfully"),
-            Ok(Err(e)) => eprintln!("Message bus returned an error: {:?}", e),
-            Err(e) => eprintln!("Message bus task panicked or was cancelled: {:?}", e),
-        }
-    }
-
-    result = grpc_handle => {
-        match result {
-            Ok(()) => println!("gRPC finished successfully"),
-            Err(e) => eprintln!("gRPC task failed: {:?}", e),
-        }
-    }
-       
-
-}
 }
 
 fn load_environment() {
