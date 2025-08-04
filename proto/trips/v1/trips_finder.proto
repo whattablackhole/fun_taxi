@@ -1,15 +1,11 @@
 syntax = "proto3";
 
-package fun_taxi_messages_proto_trips;
+package fun_taxi_messages_proto.trips.v1;
+option csharp_namespace = "FunTaxi.Messages.Trips.V1";
+
+import "trips/v1/trip.proto";
 
 
-message Trip {
-    string id = 1;
-    double startLat = 2;
-    double startLon = 3;
-    double endLon = 4;
-    double endLat = 5;
-}
 
 
 message AvailableTripsRequest {
@@ -17,7 +13,6 @@ message AvailableTripsRequest {
   double lon = 2;
   int32 radius = 3;
 }
-
 
 message AvailableTripsReply {
   repeated Trip trips = 1;

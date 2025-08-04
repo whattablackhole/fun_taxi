@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package fun_taxi_messages_proto.trips.v1;
+option csharp_namespace = "FunTaxi.Messages.Trips.V1";
+
+message TripGeoPositionAddCommand {
+    string id = 1;
+    double startLat = 2;
+    double startLon = 3;
+    double endLon = 4;
+    double endLat = 5;
+}
