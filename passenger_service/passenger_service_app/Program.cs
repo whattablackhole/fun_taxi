@@ -32,7 +32,7 @@ builder.Services.AddMassTransit(x =>
                 .Configuration.GetSection("RabbitMQ")
                 .Get<RabbitMQSetting>();
             cfg.Host(
-                rabbitSettings.Host,
+                rabbitSettings!.Host,
                 (c) =>
                 {
                     c.Username(rabbitSettings.UserName!);

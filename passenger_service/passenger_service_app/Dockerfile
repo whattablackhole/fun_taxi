@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0.203-alpine3.18-amd64 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0.203 AS build
 
 WORKDIR /app
 

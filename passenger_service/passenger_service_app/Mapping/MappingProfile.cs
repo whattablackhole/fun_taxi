@@ -1,5 +1,5 @@
 using AutoMapper;
-using FunTaxiMessagesProtoTrips;
+using FunTaxi.Messages.Trips.V1;
 using PassengerService.Api.DTOs;
 using PassengerService.Core.Domain.Models;
 using PassengerService.Infrastructure.Data.Models;
@@ -12,6 +12,6 @@ public class MappingProfile : Profile
     {
         CreateMap<LocationDTO, GeoLocation>();
         CreateMap<CreateTripSearchDTO, CreateTripSearchJob>();
-        CreateMap<TripJob, TripRequested>();
+        CreateMap<TripJob, PassengerTripRequested>();
     }
 }

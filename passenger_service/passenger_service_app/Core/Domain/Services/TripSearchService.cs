@@ -1,5 +1,5 @@
 using AutoMapper;
-using FunTaxiMessagesProtoTrips;
+using FunTaxi.Messages.Trips.V1;
 using MassTransit;
 using PassengerService.Core.Domain.Models;
 using PassengerService.Core.Interfaces;
@@ -32,8 +32,8 @@ public class TripSearchService(
 
         await _jobRepository.AddTripJobAsync(tripJob);
         await _jobRepository.SaveChangesAsync();
-        // TODO: use GRPS.Tools to compile protos automatically
-        var message = _mapper.Map<TripRequested>(tripJob);
+
+        var message = _mapper.Map<PassengerTripRequested>(tripJob);
 
         await _publishEndpoint.Publish(message);
     }

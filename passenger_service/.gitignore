@@ -2,3 +2,4 @@
 **obj/
 **.fake
 .fake
+**appsettings.json

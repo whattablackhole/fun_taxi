@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package fun_taxi_messages_proto.trips.v1;
+option csharp_namespace = "FunTaxi.Messages.Trips.V1";
+
+message TripGeoPositionRemoveCommand {
+    string id = 1;
+}
