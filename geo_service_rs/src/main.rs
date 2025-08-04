@@ -17,9 +17,8 @@ use tonic::transport::Server;
 
 #[tokio::main]
 async fn main() -> () {
-    env_logger::init();
-
     load_environment();
+    env_logger::init();
 
     let kafka_handle: tokio::task::JoinHandle<Result<(), rdkafka::error::KafkaError>> =
         spawn_long_running_kafka_processor(
@@ -44,6 +43,7 @@ async fn main() -> () {
         .add_service(TripsFinderServiceServer::new(TripsFinderServiceImpl::new(
             redis,
         )))
+
         .serve(env::var("GRPC_SERVER_ADDRESS").unwrap().parse().unwrap());
 
     tokio::select! {

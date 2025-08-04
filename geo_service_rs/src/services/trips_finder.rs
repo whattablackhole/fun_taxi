@@ -3,7 +3,6 @@ use redis::{
     aio::MultiplexedConnection,
     geo::{self, Coord, RadiusSearchResult},
 };
-use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 
 use crate::protos::trips::{
@@ -12,12 +11,12 @@ use crate::protos::trips::{
 };
 
 pub struct TripsFinderServiceImpl {
-    db: Mutex<MultiplexedConnection>,
+    db: MultiplexedConnection,
 }
 
 impl TripsFinderServiceImpl {
     pub fn new(db: MultiplexedConnection) -> Self {
-        Self { db: Mutex::new(db) }
+        Self { db: db }
     }
 }
 
@@ -27,9 +26,10 @@ impl TripsFinderService for TripsFinderServiceImpl {
         &self,
         request: Request<AvailableTripsRequest>,
     ) -> Result<Response<AvailableTripsReply>, Status> {
+        let mut db = self.db.clone();
+
         let req: AvailableTripsRequest = request.into_inner();
         let start_search_result = {
-            let mut db = self.db.lock().await;
             let result: Result<Vec<RadiusSearchResult>, redis::RedisError> = db
                 .geo_radius(
                     "available_trips:start",
@@ -37,7 +37,7 @@ impl TripsFinderService for TripsFinderServiceImpl {
                     req.lat,
                     req.radius.into(),
                     geo::Unit::Meters,
-                    geo::RadiusOptions::default(),
+                    geo::RadiusOptions::default().with_coord(),
                 )
                 .await;
 
@@ -51,8 +51,6 @@ impl TripsFinderService for TripsFinderServiceImpl {
         };
 
         let end_positions = {
-            let mut db = self.db.lock().await;
-
             let trip_ids: Vec<String> =
                 start_search_result.iter().map(|r| r.name.clone()).collect();
             let end_positions: Result<Vec<Coord<f64>>, redis::RedisError> =
