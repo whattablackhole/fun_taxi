@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package fun_taxi_messages_proto.gps.v1;
+option csharp_namespace = "FunTaxi.Messages.Gps.V1";
+
+
+message SearchDriversRequest {
+  double radius = 1;
+  double lat = 2;
+  double lon = 3;
+}
+
+message DriverAndPosition {
+  string driverId = 1;
+  string lat = 2;
+  string lon = 3;
+  // add bearing
+}
+
+message SearchDriversReply {
+  repeated DriverAndPosition driversAndPositions = 1;
+}
+
+service DriversFinderService {
+  rpc SearchDriversByPosition (SearchDriversRequest) returns (SearchDriversReply);
+}

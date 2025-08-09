@@ -1,4 +1,5 @@
 using AutoMapper;
+using FunTaxi.Messages.Gps.V1;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using PassengerService.Core.Domain.Services;
@@ -7,6 +8,7 @@ using PassengerService.Infrastructure.Data;
 using PassengerService.Infrastructure.Data.Repositories;
 using PassengerService.Infrastructure.MessageBrockers;
 using PassengerService.Mapping;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 var appConfig = builder.Configuration;
@@ -22,6 +24,11 @@ builder.Services.AddAutoMapper(
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=passenger.db")
 );
+
+builder.Services.AddGrpcClient<DriversFinderService.DriversFinderServiceClient>(o =>
+{
+    o.Address = new Uri(appConfig["GEO_SERVICE_GRPC_ADDRESS"]);
+});
 
 builder.Services.AddMassTransit(x =>
 {
@@ -74,6 +81,8 @@ catch (AggregateException ex)
 }
 #endif
 
+app.UseHttpMetrics();
+app.MapMetrics();
 app.UseHttpsRedirection();
 app.MapControllers();
 

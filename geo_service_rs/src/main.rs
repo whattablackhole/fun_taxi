@@ -9,8 +9,11 @@ use std::env;
 
 use crate::{
     consumers::trips::spawn_trip_geo_commands_consumer,
-    protos::trips::trips_finder_service_server::TripsFinderServiceServer,
-    services::trips_finder::TripsFinderServiceImpl,
+    protos::{
+        gps::drivers_finder_service_server::DriversFinderServiceServer,
+        trips::trips_finder_service_server::TripsFinderServiceServer,
+    },
+    services::{drivers_finder::DriversFinderServiceImpl, trips_finder::TripsFinderServiceImpl},
 };
 use consumers::geoposition::spawn_long_running_kafka_processor;
 use dotenv::from_filename;
@@ -43,8 +46,11 @@ async fn main() -> () {
 
     let grpc_handle = Server::builder()
         .add_service(TripsFinderServiceServer::new(TripsFinderServiceImpl::new(
-            redis,
+            redis.clone(),
         )))
+        .add_service(DriversFinderServiceServer::new(
+            DriversFinderServiceImpl::new(redis),
+        ))
         .serve(env::var("GRPC_SERVER_ADDRESS").unwrap().parse().unwrap());
 
     tokio::select! {

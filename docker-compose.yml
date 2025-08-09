@@ -26,6 +26,7 @@ services:
       - 1.1.1.1
     ports:
      - "8080:8080"
+     - "7777:7777"
     networks:
       - app-network
     depends_on:
@@ -166,7 +167,29 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"    
+    depends_on:
+      - passenger_service
+    networks:
+      - app-network
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - app-network
   redisinsight:
     image: redis/redisinsight
     ports:
@@ -230,6 +253,8 @@ configs:
   redis-config:
     file: ./redis.conf
 volumes:
+  grafana_data:
+  prometheus_data:
   passenger_sqlite_data:
   kafka-data:
     driver: local
@@ -242,7 +267,7 @@ volumes:
 networks:
   app-network:
     driver: bridge
-
+  
 # # bot_service:
 #   #   build:
 #   #     context: ./bot_service_rs

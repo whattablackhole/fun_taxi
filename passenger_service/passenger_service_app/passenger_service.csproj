@@ -9,6 +9,7 @@
     <PackageReference Include="Google.Protobuf" Version="3.31.1" />
     <PackageReference Include="MassTransit" Version="8.5.1" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.1" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageReference Include="Grpc.Tools" Version="2.72.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -18,11 +19,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.7" />
+    <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
   </ItemGroup>
   <ItemGroup>
-    <Protobuf
-      Include="proto\trips\v1\trip_state_events\passenger_trip_requested.proto"
-      GrpcServices="Client"
-    />
+    <Protobuf Include="proto\trips\v1\trip_state_events\passenger_trip_requested.proto" GrpcServices="Client" />
+    <Protobuf Include="proto\gps\v1\driver_finder_service.proto" GrpcServices="Client" />
   </ItemGroup>
 </Project>
