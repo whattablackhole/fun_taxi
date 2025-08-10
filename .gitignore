@@ -1,1 +1,5 @@
 secrets**
+**terraform.tfstate**
+**terraform.tfstate.backup**
+**.infracost**
+**.terraform**
