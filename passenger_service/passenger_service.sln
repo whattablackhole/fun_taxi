@@ -1,12 +1,12 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "passenger_service_tests", "passenger_service_tests\passenger_service_tests.csproj", "{F27E0448-73A8-440C-9CE1-1E4386B5593B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "passenger_service", "passenger_service_app\passenger_service.csproj", "{9577D880-25EE-216F-175A-D65469DE70FD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "passenger_service", "passenger_service_app\passenger_service.csproj", "{E3751E45-CA97-445A-9D2C-4F4B3C2D644D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "passenger_service_tests", "passenger_service_tests\passenger_service_tests.csproj", "{AAACBE3A-3A27-A129-6FFA-6932855E4C0D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "passenger_service_integration_tests", "passenger_service_integration_tests\passenger_service_integration_tests.csproj", "{6ED64373-A7F8-4276-9A9F-B75261403D94}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "passenger_service_integration_tests", "passenger_service_integration_tests\passenger_service_integration_tests.csproj", "{10CE4E1E-31EF-A5BE-36CB-8DA07F3613BF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,27 +14,23 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{51E07C5B-A5DA-10D1-B811-C60ED324BB86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{51E07C5B-A5DA-10D1-B811-C60ED324BB86}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{51E07C5B-A5DA-10D1-B811-C60ED324BB86}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{51E07C5B-A5DA-10D1-B811-C60ED324BB86}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F27E0448-73A8-440C-9CE1-1E4386B5593B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F27E0448-73A8-440C-9CE1-1E4386B5593B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F27E0448-73A8-440C-9CE1-1E4386B5593B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F27E0448-73A8-440C-9CE1-1E4386B5593B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E3751E45-CA97-445A-9D2C-4F4B3C2D644D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E3751E45-CA97-445A-9D2C-4F4B3C2D644D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E3751E45-CA97-445A-9D2C-4F4B3C2D644D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E3751E45-CA97-445A-9D2C-4F4B3C2D644D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6ED64373-A7F8-4276-9A9F-B75261403D94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6ED64373-A7F8-4276-9A9F-B75261403D94}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6ED64373-A7F8-4276-9A9F-B75261403D94}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6ED64373-A7F8-4276-9A9F-B75261403D94}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9577D880-25EE-216F-175A-D65469DE70FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9577D880-25EE-216F-175A-D65469DE70FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9577D880-25EE-216F-175A-D65469DE70FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9577D880-25EE-216F-175A-D65469DE70FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AAACBE3A-3A27-A129-6FFA-6932855E4C0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AAACBE3A-3A27-A129-6FFA-6932855E4C0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AAACBE3A-3A27-A129-6FFA-6932855E4C0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AAACBE3A-3A27-A129-6FFA-6932855E4C0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10CE4E1E-31EF-A5BE-36CB-8DA07F3613BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10CE4E1E-31EF-A5BE-36CB-8DA07F3613BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10CE4E1E-31EF-A5BE-36CB-8DA07F3613BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10CE4E1E-31EF-A5BE-36CB-8DA07F3613BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {8A4DEBA9-41B2-4C04-9286-CC7CADB50C9A}
+		SolutionGuid = {07859FD5-65B6-4632-A07E-53C032638ACC}
 	EndGlobalSection
 EndGlobal

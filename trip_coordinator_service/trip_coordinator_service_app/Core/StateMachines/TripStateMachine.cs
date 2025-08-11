@@ -48,7 +48,7 @@ public class TripStateMachine : MassTransitStateMachine<TripState>
                 .Publish(
                     (ctx) =>
                     {
-                        return new TripGeoPositionAddCommand()
+                        return new TripGeoPositionAddCommand
                         {
                             Id = ctx.Saga.CorrelationId.ToString(),
                             StartLat = ctx.Saga.StartLat,

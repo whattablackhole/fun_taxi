@@ -1,0 +1,99 @@
+{
+  "consumer": {
+    "name": "Passenger Trip Event Consumer"
+  },
+  "interactions": [
+    {
+      "contents": {
+        "content": [
+          {
+            "endLat": 1.23,
+            "endLon": 1.23,
+            "id": "UUID",
+            "startLat": 1.23,
+            "startLon": 1.23,
+            "userId": "UUID"
+          }
+        ],
+        "contentType": "application/json",
+        "encoded": false
+      },
+      "description": "some trip request events",
+      "matchingRules": {
+        "body": {
+          "$": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type",
+                "min": 1
+              }
+            ]
+          },
+          "$[*].endLat": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          },
+          "$[*].endLon": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          },
+          "$[*].id": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          },
+          "$[*].startLat": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          },
+          "$[*].startLon": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          },
+          "$[*].userId": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        }
+      },
+      "pending": false,
+      "type": "Asynchronous/Messages"
+    }
+  ],
+  "metadata": {
+    "pactRust": {
+      "ffi": "0.4.23",
+      "models": "1.2.5"
+    },
+    "pactSpecification": {
+      "version": "4.0"
+    }
+  },
+  "provider": {
+    "name": "Passenger Trip Event Producer"
+  }
+}

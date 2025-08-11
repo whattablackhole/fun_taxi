@@ -1,4 +1,5 @@
 using AutoMapper;
+using FunTaxi.Messages.Trips.V1;
 using MassTransit;
 using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,6 @@ using PassengerService.Core.Domain.Models;
 using PassengerService.Core.Domain.Services;
 using PassengerService.Infrastructure.Data;
 using PassengerService.Infrastructure.Data.Repositories;
-using PassengerService.Infrastructure.MessageBrockers.Models;
 using PassengerService.Mapping;
 
 namespace passenger_service_tests.Services;
@@ -67,6 +67,6 @@ public class TripSearchServiceTests : IAsyncLifetime
 
         // Assert
         Assert.Equal(1, _dbContext.Jobs.Count());
-        Assert.True(await _harness.Published.Any<TripSearchRequestedMessage>());
+        Assert.True(await _harness.Published.Any<PassengerTripRequested>());
     }
 }
