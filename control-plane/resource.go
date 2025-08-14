@@ -65,8 +65,6 @@ func makeEdsCluster(clusterName string) *cluster.Cluster {
 		OutlierDetection: &cluster.OutlierDetection{},
 		LbPolicy:         cluster.Cluster_RING_HASH,
 		LbConfig:         &cluster.Cluster_RingHashLbConfig_{RingHashLbConfig: ringConfig},
-		// LoadAssignment:  makeEndpoint("consul", []ServiceWsMeta{{port: 8500, address: "consul-server"}}),
-		// DnsLookupFamily: cluster.Cluster_V4_ONLY,
 	}
 }
 
@@ -150,7 +148,7 @@ func makeRoute(routeName string) *route.RouteConfiguration {
 				{
 					Match: &route.RouteMatch{
 						PathSpecifier: &route.RouteMatch_Prefix{
-							Prefix: "streamgate/ws-streamgate",
+							Prefix: "/streamgate/ws-streamgate",
 						},
 					},
 					Action: &route.Route_Route{
@@ -158,15 +156,35 @@ func makeRoute(routeName string) *route.RouteConfiguration {
 							ClusterSpecifier: &route.RouteAction_Cluster{
 								Cluster: "streamgate",
 							},
+							HashPolicy: []*route.RouteAction_HashPolicy{
+								{
+									PolicySpecifier: &route.RouteAction_HashPolicy_QueryParameter_{
+										QueryParameter: &route.RouteAction_HashPolicy_QueryParameter{
+											Name: "user_id",
+										},
+									},
+									Terminal: true,
+								},
+								{
+									PolicySpecifier: &route.RouteAction_HashPolicy_Header_{
+										Header: &route.RouteAction_HashPolicy_Header{
+											HeaderName: "x-user-id",
+										},
+									},
+									Terminal: false,
+								},
+							},
 							PrefixRewrite: "/",
 							HostRewriteSpecifier: &route.RouteAction_HostRewriteLiteral{
 								HostRewriteLiteral: "streamgate",
 							},
+
 							UpgradeConfigs: []*route.RouteAction_UpgradeConfig{
 								{
 									UpgradeType: "websocket",
 								},
 							},
+
 							IdleTimeout: durationpb.New(0),
 						},
 					},
