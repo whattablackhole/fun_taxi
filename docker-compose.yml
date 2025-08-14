@@ -1,13 +1,104 @@
 
 services:
+  
+  consul-server:
+    image: hashicorp/consul:1.21.4
+    command: agent -server -bootstrap-expect=1 -client=0.0.0.0 -ui
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/v1/status/leader"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+  control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    container_name: control-plane
+    environment:
+      - CONSUL_URL=consul-server:8500
+    networks:
+      - app-network
+    ports:
+      - "10001:18000"
+    depends_on:
+      consul-server:
+        condition: service_started 
+  envoy-ingress:
+    image: envoyproxy/envoy:v1.33-latest
+    volumes:
+      - ./envoy.yml:/etc/envoy/envoy.yaml
+    ports:
+      - "8080:10000"
+      - "9901:9901"
+    command: envoy -c /etc/envoy/envoy.yaml
+    depends_on:
+      consul-agent:
+        condition: service_started 
+    networks:
+      - app-network
+  consul-agent:
+    image: hashicorp/consul:1.21.4
+    command: agent -config-dir=/consul/config
+    volumes:
+      - ./consul-agent-config:/consul/config
+    environment:
+      - CONSUL_LOG_LEVEL=debug
+    ports:
+      - "8502:8502"
+    networks:
+      - app-network
+    depends_on:
+      consul-server:
+        condition: service_healthy
+
+  streamgate:
+    build:
+      context: ./streamgate_rs
+      dockerfile: Dockerfile
+    container_name: fun_taxi-streamgate
+    ports:
+      - "7067:7067"
+    environment:
+      - SERVER_IP_ADDRESS=0.0.0.0
+      - SERVER_PORT=7067
+      - APP_ENV=compose
+    networks:
+      - app-network
+    depends_on:
+      consul-server:
+        condition: service_healthy
+      redis:
+        condition: service_started
+  streamgate2:
+    build:
+      context: ./streamgate_rs
+      dockerfile: Dockerfile
+    container_name: fun_taxi-streamgate2
+    ports:
+        - "7068:7068"
+    environment:
+      - SERVER_IP_ADDRESS=0.0.0.0
+      - SERVER_PORT=7068
+      - APP_ENV=compose
+    networks:
+      - app-network
+    depends_on:
+      consul-server:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   driver_service:
     build:
       context: ./driver_service_rs
       dockerfile: Dockerfile
     container_name: fun_taxi-driver_service
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     ports:
       - "7077:7077"
     networks:
@@ -21,11 +112,8 @@ services:
       context: ./geo_service_rs
       dockerfile: Dockerfile
     container_name: fun_taxi-geo_service
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     ports:
-     - "8080:8080"
+     - "8082:8080"
      - "7777:7777"
     networks:
       - app-network
@@ -77,7 +165,7 @@ services:
   # it consumes shared redis in dev
   trip_coordinator_service:
     build:
-      context: ./trip_coordinator_service
+      context: ./trip_coordinator_service/trip_coordinator_service_app
       dockerfile: Dockerfile
     container_name: fun_taxi-trip_coordinator_service
     ports:
@@ -264,9 +352,11 @@ volumes:
     driver: local
   rabbitmq-log:
     driver: local
+  consul-data:
 networks:
   app-network:
     driver: bridge
+
   
 # # bot_service:
 #   #   build:

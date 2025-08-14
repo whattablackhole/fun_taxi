@@ -1,0 +1,16 @@
+{
+  "service": {
+    "id": "streamgate",
+    "name": "streamgate",
+    "port": 7067,
+    "address": "streamgate",
+    "tags": [
+      "streamgate-backend"
+    ],
+    "check": {
+      "http": "http://streamgate:7067/health",
+      "interval": "10s",
+      "timeout": "1s"
+    }
+  }
+}
