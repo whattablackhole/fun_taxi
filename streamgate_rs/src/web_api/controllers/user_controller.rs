@@ -1,57 +1,69 @@
-use std::{env, sync::Arc};
-
-use crate::{
-    AppState, infrastructure::websockets::ws_connection_manager::WebSocketConnectionManager,
+use axum::{
+    extract::{Query, State, WebSocketUpgrade, ws::WebSocket},
+    response::IntoResponse,
 };
-use actix_web::{Error, HttpRequest, HttpResponse, rt, web};
-use actix_ws::AggregatedMessage;
-use futures_util::StreamExt;
-use log::debug;
+use futures_util::{SinkExt, StreamExt};
+use log::{debug, error, warn};
+use serde::Deserialize;
+use std::sync::Arc;
+use uuid::Uuid;
 
-pub struct UserController {}
+use crate::AppState;
 
-impl UserController {
-    pub async fn connect_ws(
-        mut req: HttpRequest,
-        stream: web::Payload,
-        app_state: web::Data<Arc<AppState>>,
-    ) -> Result<HttpResponse, Error> {
-        let port = u16::from_str_radix(&env::var("SERVER_PORT").unwrap(), 10).unwrap();
-        debug!("WS reqest came to port: {}", port);
-        let (res, mut stream, mut session, id) =
-            WebSocketConnectionManager::establish_connection(&mut req, stream, app_state.clone())
-                .await?;
+#[derive(Deserialize)]
+pub struct ConnectWsQuery {
+    #[serde(rename = "user-id")]
+    pub user_id: String,
+}
 
-        rt::spawn(async move {
-            while let Some(msg) = stream.next().await {
-                match msg {
-                    Ok(AggregatedMessage::Text(text)) => {
-                        session.text(text).await.unwrap();
-                    }
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<ConnectWsQuery>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| {
+        debug!(
+            "[SPAWNED TASK STARTED] Upgrading connection for user: {}",
+            query.user_id
+        );
 
-                    Ok(AggregatedMessage::Binary(bin)) => {
-                        session.binary(bin).await.unwrap();
-                    }
+        connection_lifecycle(socket, state, query.user_id)
+    })
+}
 
-                    Ok(AggregatedMessage::Ping(msg)) => {
-                        session.pong(&msg).await.unwrap();
-                    }
+async fn connection_lifecycle(mut socket: WebSocket, state: Arc<AppState>, user_id_str: String) {
+    debug!("[WS CONNECTION LIFECYCLE STARTED] Parsing uuid");
 
-                    Ok(AggregatedMessage::Close(reason)) => {
-                        println!("WebSocket closed: {:?}", reason);
-                        let _ = WebSocketConnectionManager::remove_connection_by_driver_id(
-                            id,
-                            app_state.clone(),
-                        )
-                        .await;
-                        break;
-                    }
+    let user_id = match Uuid::parse_str(&user_id_str) {
+        Ok(id) => id,
+        Err(_) => {
+            warn!("Invalid UUID provided, closing connection: {}", user_id_str);
+            let _ = socket.close().await;
+            return;
+        }
+    };
 
-                    _ => {}
-                }
+    let mut receiver = match state.ws_manager.add_connection(user_id, socket).await {
+        Ok(rx) => rx,
+        Err(e) => {
+            error!("Failed to add connection for user {}: {}", user_id, e);
+            return;
+        }
+    };
+
+    while let Some(msg_result) = receiver.next().await {
+        match msg_result {
+            Ok(msg) => {
+                debug!("Received message from {}: {:?}", user_id, msg);
             }
-        });
+            Err(e) => {
+                debug!("WebSocket error for user {}: {}", user_id, e);
+                break;
+            }
+        }
+    }
 
-        Ok(res)
+    if let Err(e) = state.ws_manager.remove_connection(user_id).await {
+        error!("Failed to clean up connection for user {}: {}", user_id, e);
     }
 }
