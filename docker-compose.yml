@@ -33,12 +33,15 @@ services:
     image: envoyproxy/envoy:v1.33-latest
     volumes:
       - ./envoy.yml:/etc/envoy/envoy.yaml
+      - ./certs/ca.crt:/etc/envoy/certs/ca.crt
     ports:
       - "8080:10000"
       - "9901:9901"
-    command: envoy -c /etc/envoy/envoy.yaml
+    command: sh -c "sleep 10 && envoy -c /etc/envoy/envoy.yaml"
     depends_on:
       consul-agent:
+        condition: service_started
+      control-plane:
         condition: service_started 
     networks:
       - app-network
@@ -62,6 +65,9 @@ services:
       context: ./streamgate_rs
       dockerfile: Dockerfile
     container_name: fun_taxi-streamgate
+    volumes:
+      ./certs/streamgate-server.crt:/
+      ./certs/streamgate-server.key:/
     ports:
       - "7067:7067"
     environment:
@@ -81,10 +87,10 @@ services:
       dockerfile: Dockerfile
     container_name: fun_taxi-streamgate2
     ports:
-        - "7068:7068"
+        - "7068:7067"
     environment:
       - SERVER_IP_ADDRESS=0.0.0.0
-      - SERVER_PORT=7068
+      - SERVER_PORT=7067
       - APP_ENV=compose
     networks:
       - app-network
@@ -104,8 +110,17 @@ services:
     networks:
       - app-network
     environment:
-      - APP_ENV=compose
-
+      - SERVER_IP_ADDRESS=0.0.0.0
+      - SERVER_PORT=7077
+      - GEO_SERVICE_GRPC_ADDRESS=http://geo_service:7777
+      - STREAMGATE_GRPC_ADDRESS=http://envoy-ingress:10000
+      - RABBIT_MQ=amqp://rabbitmq:5672
+      - RUST_LOG=debug
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
     
   geo_service:
     build:
@@ -125,7 +140,16 @@ services:
       schema-registry:
         condition: service_started
     environment:
-      - APP_ENV=compose
+      - SERVER_IP_ADDRESS=0.0.0.0
+      - SERVER_PORT=7077
+      - GRPC_SERVER_ADDRESS=0.0.0.0:7777
+      - OPEN_SERVICE_API_BASE_URL=https://api.openrouteservice.org/v2
+      - OPEN_ROUTES_SERVICE_API_KEY=UNSET
+      - REDIS_ADDRESS=redis://redis:6379
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_BROKERS=kafka:9092
+      - RABBIT_MQ=amqp://rabbitmq:5672
+      - RUST_LOG=debug
   gps_service:
     build:
       context: ./gps_service
@@ -325,9 +349,9 @@ services:
     configs:
       - source: rabbitmq-plugins
         target: /etc/rabbitmq/enabled_plugins
-    volumes:
-      - rabbitmq-lib:/var/lib/rabbitmq/
-      - rabbitmq-log:/var/log/rabbitmq
+    # volumes:
+    #   - rabbitmq-lib:/var/lib/rabbitmq/
+    #   - rabbitmq-log:/var/log/rabbitmq
     networks:
       - app-network
     healthcheck:
