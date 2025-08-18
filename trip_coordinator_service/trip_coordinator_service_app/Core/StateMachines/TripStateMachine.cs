@@ -50,7 +50,7 @@ public class TripStateMachine : MassTransitStateMachine<TripState>
                     {
                         return new TripGeoPositionAddCommand
                         {
-                            Id = ctx.Saga.CorrelationId.ToString(),
+                            Id = ctx.Message.Id,
                             StartLat = ctx.Saga.StartLat,
                             StartLon = ctx.Saga.StartLon,
                             EndLat = ctx.Saga.EndLat,
@@ -78,6 +78,7 @@ public class TripStateMachine : MassTransitStateMachine<TripState>
                         };
                     }
                 )
+                // Add Respond for fast acknowledge?
                 .Publish(
                     (ctx) =>
                     {
@@ -86,6 +87,10 @@ public class TripStateMachine : MassTransitStateMachine<TripState>
                             Id = ctx.Saga.CorrelationId.ToString(),
                             DriverId = ctx.Saga.DriverId.ToString(),
                         };
+                    },
+                    (publishCtx) =>
+                    {
+                        publishCtx.Headers.Set("x-user-id", publishCtx.Message.DriverId);
                     }
                 )
                 .TransitionTo(Accepted)
