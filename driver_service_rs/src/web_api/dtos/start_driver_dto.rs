@@ -19,6 +19,23 @@ pub struct GetAvailableTripsDto {
 }
 
 
+
+#[derive(Deserialize)]
+pub struct AcceptTripDto {
+    pub driver_id: Uuid,
+    pub trip_id: Uuid
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MassTransitEnvelope<T> {
+    #[serde(rename = "message")]
+    pub message: T,
+    #[serde(rename = "messageType")]
+    pub message_type: Vec<String>,
+    #[serde(rename = "correlationId")]
+    pub correlation_id: Option<String>,
+}
+
 #[derive(Serialize)]
 pub struct GeoPositionDto {
     pub lat: f64,

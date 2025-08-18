@@ -1,13 +1,17 @@
 use std::{str::FromStr, sync::Arc};
 
 use crate::{
-    domain::services::trips_finder_service::TripsFinderService,
-    web_api::dtos::start_driver_dto::{AvailableTripsDto, GeoPositionDto, GetAvailableTripsDto},
     AppState,
+    domain::services::trips_finder_service::TripsFinderService,
+    proto::fun_taxi_messages_proto_trips::DriverTripAccepted,
+    web_api::dtos::start_driver_dto::{
+        AcceptTripDto, AvailableTripsDto, GeoPositionDto, GetAvailableTripsDto, MassTransitEnvelope,
+    },
 };
-use actix_web::{rt, web, Error, HttpRequest, HttpResponse, Responder};
+use actix_web::{Error, HttpRequest, HttpResponse, Responder, rt, web};
 use actix_ws::AggregatedMessage;
 use futures_util::StreamExt;
+use lapin::{BasicProperties, options::BasicPublishOptions};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -55,6 +59,46 @@ impl DriverController {
             })
             .collect();
         HttpResponse::Ok().json(response)
+    }
+
+    pub async fn accept_trip(
+        payload: web::Json<AcceptTripDto>,
+        app_state: web::Data<Arc<AppState>>,
+    ) -> impl Responder {
+        let msg = DriverTripAccepted {
+            driver_id: payload.driver_id.to_string(),
+            id: payload.trip_id.to_string(),
+        };
+
+        let envelope = MassTransitEnvelope {
+            message: msg,
+            message_type: vec![
+                "urn:message:FunTaxi.Messages.Trips.V1:DriverTripAccepted".to_string(),
+            ],
+            correlation_id: Some(payload.trip_id.to_string()),
+        };
+
+        let msg_bytes = &serde_json::to_vec(&envelope).unwrap();
+        let props = BasicProperties::default()
+            .with_content_type("application/vnd.masstransit+json".into()) 
+            .with_correlation_id(payload.trip_id.to_string().into());
+
+        let response_res = app_state
+            .bus_channel
+            .basic_publish(
+                "FunTaxi.Messages.Trips.V1:DriverTripAccepted",
+                "",
+                BasicPublishOptions::default(),
+                &msg_bytes,
+                props,
+            )
+            .await;
+
+        if let Ok(_) = response_res {
+            return HttpResponse::Ok();
+        } else {
+            return HttpResponse::BadRequest();
+        }
     }
 
     pub async fn connect_with_bot_driver(

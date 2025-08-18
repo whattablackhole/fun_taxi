@@ -2,9 +2,9 @@
 use tonic::transport::{Channel};
 use tonic::Status;
 
-use super::fun_taxi_messages_proto_trips::trips_finder_service_client::TripsFinderServiceClient;
-use super::fun_taxi_messages_proto_trips::AvailableTripsRequest;
-use super::fun_taxi_messages_proto_trips::Trip;
+use crate::proto::fun_taxi_messages_proto_trips::trips_finder_service_client::TripsFinderServiceClient;
+use crate::proto::fun_taxi_messages_proto_trips::{AvailableTripsRequest, Trip};
+
 
 pub struct TripsFinderService {
     client: TripsFinderServiceClient<tonic::transport::Channel>,

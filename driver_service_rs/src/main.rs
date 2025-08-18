@@ -1,52 +1,60 @@
 use std::env;
 use std::sync::Arc;
 
+use crate::message_bus::trip_state_bus::spawn_trip_state_consumer;
 use crate::web_api::controllers::driver_controller::DriverController;
 use actix_web::http::StatusCode;
-use actix_web::{web, App, HttpServer};
+use actix_web::{App, HttpServer, web};
 use actix_ws::Session;
-use dotenv::from_filename;
+use lapin::{Connection, ConnectionProperties};
+use log::{error, info};
 use tokio::sync::Mutex;
 use tonic::transport::{Channel, Endpoint};
 
 pub mod domain;
 pub mod infrastructure;
+pub mod message_bus;
+pub mod proto;
+pub mod traits;
 pub mod web_api;
 
 pub struct AppState {
-    // tbd
     driver_session: Mutex<Option<Session>>,
     grpc_channel: Channel,
-    // driver_data_producer: Option<DriverDataProducer>,
+    bus_channel: lapin::Channel
 }
 
 impl AppState {
-    async fn new() -> Self {
+    async fn new(bus_channel: lapin::Channel) -> Self {
         Self {
             driver_session: Mutex::new(None),
             // driver_data_producer: Some(DriverDataProducer::new("localhost:9092")),
             grpc_channel: {
                 let endpoint =
-                    Endpoint::from_shared(env::var("GEO_SERVICE_GRPC_ADDRESS").unwrap())
-                        .unwrap();
+                    Endpoint::from_shared(env::var("GEO_SERVICE_GRPC_ADDRESS").unwrap()).unwrap();
                 let channel = endpoint.connect_lazy();
                 channel
             },
+            bus_channel
         }
     }
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    load_environment();
+    env_logger::init();
 
-    let app_state = web::Data::new(Arc::new(AppState::new().await));
+    let rabbit_url = env::var("RABBIT_MQ").unwrap();
+    let connection = Connection::connect(&rabbit_url, ConnectionProperties::default()).await.unwrap();
+    let channel = connection.create_channel().await.unwrap();
+
+    let app_state = web::Data::new(Arc::new(AppState::new(channel.clone()).await));
     let address = env::var("SERVER_IP_ADDRESS").unwrap();
     let port = u16::from_str_radix(&env::var("SERVER_PORT").unwrap(), 10).unwrap();
 
     println!("Starting server on {} {}", address, port);
 
-    HttpServer::new(move || {
+    let web_server = HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             .route(
@@ -56,6 +64,10 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/get_available_trips",
                 web::post().to(DriverController::get_available_trips),
+            )
+            .route(
+                "/accept_trip",
+                web::post().to(DriverController::accept_trip),
             )
             .route(
                 "stop_driver",
@@ -77,12 +89,33 @@ async fn main() -> std::io::Result<()> {
         // )
     })
     .bind((address, port))?
-    .run()
-    .await
-}
+    .run();
 
-fn load_environment() {
-    let env = env::var("APP_ENV").unwrap_or_else(|_| "dev".into());
-    let filename = format!(".env.{}", env);
-    from_filename(&filename).ok();
+    let trip_state_bus = spawn_trip_state_consumer(channel.clone());
+
+    tokio::select! {
+        trip_state_bus_result = trip_state_bus => {
+            match trip_state_bus_result {
+                Ok(_)=> {
+                    info!("grpc server finished without errors");
+                },
+                Err(e)=>{
+                    error!("grpc server finished with error: {:?}", e);
+                }
+            }
+        },
+        web_server_result = web_server => {
+            match web_server_result {
+                Ok(_)=> {
+                    info!("web server finished without errors");
+                },
+                Err(e)=>{
+                    error!("web server finished with error: {:?}", e);
+                }
+            }
+        }
+
+    }
+
+    Ok(())
 }

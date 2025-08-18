@@ -17,5 +17,9 @@ dotenv = "0.15"
 tonic = "0.14.0"
 prost = "0.14.0"
 tonic-prost = "0.14.0"
+lapin = "3.2.0"
+log = "0.4.27"
+env_logger = "0.11.8"
+
 [build-dependencies]
 tonic-prost-build = "0.14"
