@@ -1,56 +1,6 @@
 Notes:
 
-Overpass API
-Leaflet
-Openstreetmap
+Common setup:
 
-1. start client_service - uvicorn client_service.asgi:application --reload --host 0.0.0.0 --port 8082
-2. start kafka consumer - python3 manage.py consume_kafka
-3. start driver_service - uvicorn driver_service.asgi:application --reload
-4. start kafka - docker compose up --build
-5. start frontend - npm run dev
-6. start auth - uvicorn app.main:app --reload --port  8088
-7. start geo - uvicorn app.main:app --reload --port  7777
-
-
-test queries:
-
-
-[out:json];
-(
-  way["highway"](around:10, 52.13840393181177, 26.11847162246704);
-  way["highway"](around:10, 52.13787055259241, 26.11298382282257);
-);
-out body;
->;
-out skel qt; -->
-
-<!-- Steps to Construct a Bounding Box
-Determine the Min and Max Coordinates: For any two points, find the minimum and maximum latitudes and longitudes to define the bounding box.
-
-Min Latitude = min(lat1, lat2)
-Max Latitude = max(lat1, lat2)
-Min Longitude = min(lng1, lng2)
-Max Longitude = max(lng1, lng2)
-Form the Bounding Box: The bbox is then defined by these min and max values. In Overpass API, the bbox is specified as (min_lat, min_lng, max_lat, max_lng). -->
-
-[out:json];
-(
-  way["highway"](52.12467561521258,26.113214492797855 ,52.13841380914448 , 26.118493080139164);
-);
-out body;
->;
-out skel qt;
-
-
-produce new topic:
-
-./bin/kafka-topics.sh --create --topic topic-name --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
-
-import osm object:
-
-osm2pgsql -d map_db -U user -W -H localhost -P 5444 c-latest.osm.pbf
-
-
-DB SRID: 3857
+1. sudo chown -R 1000:100 consul-agent-config/ -- change owner to consul
 
