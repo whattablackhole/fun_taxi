@@ -30,8 +30,5 @@ RUN cargo build --release
 FROM debian:bookworm-slim AS app
 
 COPY --from=build /driver_service/target/release/driver_service_rs .
-COPY .env.compose .
-COPY .env.kubernetes .
-COPY .env.dev .
 
 CMD ["./driver_service_rs"]

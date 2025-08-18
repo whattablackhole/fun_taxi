@@ -66,8 +66,8 @@ services:
       dockerfile: Dockerfile
     container_name: fun_taxi-streamgate
     volumes:
-      ./certs/streamgate-server.crt:/
-      ./certs/streamgate-server.key:/
+      - ./certs/streamgate-server.crt:/streamgate-server.crt
+      - ./certs/streamgate-server.key:/streamgate-server.key
     ports:
       - "7067:7067"
     environment:
@@ -86,6 +86,9 @@ services:
       context: ./streamgate_rs
       dockerfile: Dockerfile
     container_name: fun_taxi-streamgate2
+    volumes:
+      - ./certs/streamgate-server.crt:/streamgate-server.crt
+      - ./certs/streamgate-server.key:/streamgate-server.key
     ports:
         - "7068:7067"
     environment:
