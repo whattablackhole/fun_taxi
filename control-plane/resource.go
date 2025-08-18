@@ -7,21 +7,26 @@ import (
 	"strconv"
 	"time"
 
-	"google.golang.org/protobuf/types/known/anypb"
-	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
-
+	accesslogv3 "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	fileaccesslog "github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/file/v3"
 	router "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	tlsv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
+	upstreamv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/upstreams/http/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	capi "github.com/hashicorp/consul/api"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	"sigs.k8s.io/yaml"
 )
 
@@ -31,14 +36,14 @@ const (
 	ListenerPort = 10000
 )
 
-func makeEdsCluster(clusterName string) *cluster.Cluster {
+func makeEdsCluster(clusterName string, useTls bool) *cluster.Cluster {
 	var ringConfig = &cluster.Cluster_RingHashLbConfig{
 		MinimumRingSize: &wrapperspb.UInt64Value{Value: 1024},
 		HashFunction:    cluster.Cluster_RingHashLbConfig_XX_HASH,
 		MaximumRingSize: &wrapperspb.UInt64Value{Value: 4096},
 	}
 
-	return &cluster.Cluster{
+	clusterConfig := &cluster.Cluster{
 		Name:                 clusterName,
 		ConnectTimeout:       durationpb.New(5 * time.Second),
 		ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_EDS},
@@ -66,6 +71,56 @@ func makeEdsCluster(clusterName string) *cluster.Cluster {
 		LbPolicy:         cluster.Cluster_RING_HASH,
 		LbConfig:         &cluster.Cluster_RingHashLbConfig_{RingHashLbConfig: ringConfig},
 	}
+
+	if useTls {
+		tlsContext := &tlsv3.UpstreamTlsContext{
+			CommonTlsContext: &tlsv3.CommonTlsContext{
+				AlpnProtocols: []string{"h2", "http/1.1"},
+				ValidationContextType: &tlsv3.CommonTlsContext_ValidationContext{
+					ValidationContext: &tlsv3.CertificateValidationContext{
+						TrustedCa: &core.DataSource{
+							Specifier: &core.DataSource_Filename{
+								Filename: "/etc/envoy/certs/ca.crt",
+							},
+						},
+					},
+				},
+			},
+			Sni: clusterName,
+		}
+
+		tlsContextAny, err := anypb.New(tlsContext)
+		if err != nil {
+			panic(err)
+		}
+
+		clusterConfig.TransportSocket = &core.TransportSocket{
+			Name: "envoy.transport_sockets.tls",
+			ConfigType: &core.TransportSocket_TypedConfig{
+				TypedConfig: tlsContextAny,
+			},
+		}
+
+		httpProtocolOptions := &upstreamv3.HttpProtocolOptions{
+			UpstreamProtocolOptions: &upstreamv3.HttpProtocolOptions_AutoConfig{
+				AutoConfig: &upstreamv3.HttpProtocolOptions_AutoHttpConfig{
+					Http2ProtocolOptions: &core.Http2ProtocolOptions{},
+					HttpProtocolOptions:  &core.Http1ProtocolOptions{},
+				},
+			},
+		}
+
+		pbst, err := anypb.New(httpProtocolOptions)
+		if err != nil {
+			panic(err)
+		}
+
+		clusterConfig.TypedExtensionProtocolOptions = map[string]*anypb.Any{
+			"envoy.extensions.upstreams.http.v3.HttpProtocolOptions": pbst,
+		}
+	}
+
+	return clusterConfig
 }
 
 func createEdsResponse(clusterName string, serviceEntries []*capi.ServiceEntry) (types.Resource, error) {
@@ -77,7 +132,6 @@ func createEdsResponse(clusterName string, serviceEntries []*capi.ServiceEntry) 
 			addr = entry.Node.Address
 		}
 
-		// --- DNS RESOLUTION FOR DOCKER COMPOSE ---
 		if net.ParseIP(addr) == nil {
 			ips, err := net.LookupIP(addr)
 			if err != nil || len(ips) == 0 {
@@ -132,6 +186,44 @@ func makeRoute(routeName string) *route.RouteConfiguration {
 			Routes: []*route.Route{
 				{
 					Match: &route.RouteMatch{
+						PathSpecifier: &route.RouteMatch_Prefix{
+							Prefix: "/streamgate/ws",
+						},
+					},
+					Action: &route.Route_Route{
+						Route: &route.RouteAction{
+							ClusterSpecifier: &route.RouteAction_Cluster{
+								Cluster: "streamgate",
+							},
+
+							HashPolicy: []*route.RouteAction_HashPolicy{
+								{
+									PolicySpecifier: &route.RouteAction_HashPolicy_QueryParameter_{
+
+										QueryParameter: &route.RouteAction_HashPolicy_QueryParameter{
+											Name: "user-id",
+										},
+									},
+									Terminal: true,
+								},
+							},
+							PrefixRewrite: "/ws",
+							HostRewriteSpecifier: &route.RouteAction_HostRewriteLiteral{
+								HostRewriteLiteral: "streamgate",
+							},
+
+							UpgradeConfigs: []*route.RouteAction_UpgradeConfig{
+								{
+									UpgradeType: "Websocket",
+								},
+							},
+
+							IdleTimeout: durationpb.New(0),
+						},
+					},
+				},
+				{
+					Match: &route.RouteMatch{
 						PathSpecifier: &route.RouteMatch_Path{
 							Path: "/streamgate/health",
 						},
@@ -145,10 +237,11 @@ func makeRoute(routeName string) *route.RouteConfiguration {
 						},
 					},
 				},
+
 				{
 					Match: &route.RouteMatch{
 						PathSpecifier: &route.RouteMatch_Prefix{
-							Prefix: "/streamgate/ws-streamgate",
+							Prefix: "/",
 						},
 					},
 					Action: &route.Route_Route{
@@ -158,34 +251,14 @@ func makeRoute(routeName string) *route.RouteConfiguration {
 							},
 							HashPolicy: []*route.RouteAction_HashPolicy{
 								{
-									PolicySpecifier: &route.RouteAction_HashPolicy_QueryParameter_{
-										QueryParameter: &route.RouteAction_HashPolicy_QueryParameter{
-											Name: "user_id",
-										},
-									},
-									Terminal: true,
-								},
-								{
 									PolicySpecifier: &route.RouteAction_HashPolicy_Header_{
 										Header: &route.RouteAction_HashPolicy_Header{
 											HeaderName: "x-user-id",
 										},
 									},
-									Terminal: false,
+									Terminal: true,
 								},
 							},
-							PrefixRewrite: "/",
-							HostRewriteSpecifier: &route.RouteAction_HostRewriteLiteral{
-								HostRewriteLiteral: "streamgate",
-							},
-
-							UpgradeConfigs: []*route.RouteAction_UpgradeConfig{
-								{
-									UpgradeType: "websocket",
-								},
-							},
-
-							IdleTimeout: durationpb.New(0),
 						},
 					},
 				},
@@ -193,13 +266,54 @@ func makeRoute(routeName string) *route.RouteConfiguration {
 		}},
 	}
 }
-
 func makeHTTPListener(listenerName, route string) *listener.Listener {
+	accessLogConfig := &fileaccesslog.FileAccessLog{
+		Path: "/dev/stdout",
+		AccessLogFormat: &fileaccesslog.FileAccessLog_LogFormat{
+			LogFormat: &core.SubstitutionFormatString{
+				Format: &core.SubstitutionFormatString_JsonFormat{
+					JsonFormat: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"start_time":     structpb.NewStringValue("%START_TIME%"),
+							"method":         structpb.NewStringValue("%REQ(:METHOD)%"),
+							"path":           structpb.NewStringValue("%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"),
+							"protocol":       structpb.NewStringValue("%PROTOCOL%"),
+							"response_code":  structpb.NewStringValue("%RESPONSE_CODE%"),
+							"response_flags": structpb.NewStringValue("%RESPONSE_FLAGS%"),
+							"bytes_received": structpb.NewStringValue("%BYTES_RECEIVED%"),
+							"bytes_sent":     structpb.NewStringValue("%BYTES_SENT%"),
+							"duration_ms":    structpb.NewStringValue("%DURATION%"),
+							"upstream_host":  structpb.NewStringValue("%UPSTREAM_HOST%"),
+							"user_agent":     structpb.NewStringValue("%REQ(USER-AGENT)%"),
+							"request_id":     structpb.NewStringValue("%REQ(X-REQUEST-ID)%"),
+							"authority":      structpb.NewStringValue("%REQ(:AUTHORITY)%"),
+							"user_id_header": structpb.NewStringValue("%REQ(X-USER-ID)%"),
+							"user_id_query":  structpb.NewStringValue("%REQ(user-id?QUERY)%"),
+							"computed_hash":  structpb.NewStringValue("%FILTER_STATE(envoy.lb.computed_hash)%"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	accessLogTypedConfig, err := anypb.New(accessLogConfig)
+	if err != nil {
+		log.Fatalf("failed to marshal access log config: %v", err)
+	}
+	accessLogs := []*accesslogv3.AccessLog{
+		{
+			Name: wellknown.FileAccessLog,
+			ConfigType: &accesslogv3.AccessLog_TypedConfig{
+				TypedConfig: accessLogTypedConfig,
+			},
+		},
+	}
 	routerConfig, _ := anypb.New(&router.Router{})
 	manager := &hcm.HttpConnectionManager{
+		AccessLog:  accessLogs,
 		CodecType:  hcm.HttpConnectionManager_AUTO,
 		StatPrefix: "http",
-
 		RouteSpecifier: &hcm.HttpConnectionManager_Rds{
 			Rds: &hcm.Rds{
 				ConfigSource:    makeConfigSource(),
@@ -207,16 +321,22 @@ func makeHTTPListener(listenerName, route string) *listener.Listener {
 			},
 		},
 		HttpFilters: []*hcm.HttpFilter{{
-			Name:       "http-router",
+			Name:       wellknown.Router,
 			ConfigType: &hcm.HttpFilter_TypedConfig{TypedConfig: routerConfig},
 		}},
+		UpgradeConfigs: []*hcm.HttpConnectionManager_UpgradeConfig{
+			{
+				UpgradeType: "h2c",
+			},
+		},
 	}
+
 	pbst, err := anypb.New(manager)
 	if err != nil {
 		panic(err)
 	}
 
-	return &listener.Listener{
+	lst := &listener.Listener{
 		Name: listenerName,
 		Address: &core.Address{
 			Address: &core.Address_SocketAddress{
@@ -229,15 +349,19 @@ func makeHTTPListener(listenerName, route string) *listener.Listener {
 				},
 			},
 		},
-		FilterChains: []*listener.FilterChain{{
-			Filters: []*listener.Filter{{
-				Name: "http-connection-manager",
-				ConfigType: &listener.Filter_TypedConfig{
-					TypedConfig: pbst,
-				},
-			}},
+	}
+
+	filterChain := &listener.FilterChain{
+		Filters: []*listener.Filter{{
+			Name: wellknown.HTTPConnectionManager,
+			ConfigType: &listener.Filter_TypedConfig{
+				TypedConfig: pbst,
+			},
 		}},
 	}
+
+	lst.FilterChains = []*listener.FilterChain{filterChain}
+	return lst
 }
 
 func makeConfigSource() *core.ConfigSource {
@@ -263,8 +387,12 @@ func updateSnapshotCache(snapshotCache cache.SnapshotCache, nodeId string, entri
 	endpoints := []types.Resource{}
 
 	for serviceName, healthyEntries := range entriesState {
-		cluster := makeEdsCluster(serviceName)
-		clusters = append(clusters, cluster)
+
+		if serviceName == "streamgate" {
+			clusters = append(clusters, makeEdsCluster(serviceName, true))
+		} else {
+			clusters = append(clusters, makeEdsCluster(serviceName, false))
+		}
 
 		edsResource, err := createEdsResponse(serviceName, healthyEntries)
 		if err != nil {
@@ -284,7 +412,6 @@ func updateSnapshotCache(snapshotCache cache.SnapshotCache, nodeId string, entri
 			resource.ListenerType: {makeHTTPListener(ListenerName, RouteName)},
 		},
 	)
-
 	if err := snapshot.Consistent(); err != nil {
 		l.Errorf("snapshot creation error: %v", err)
 		DebugSnapshot(snapshot)
