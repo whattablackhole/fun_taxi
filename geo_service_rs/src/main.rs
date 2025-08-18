@@ -16,13 +16,11 @@ use crate::{
     services::{drivers_finder::DriversFinderServiceImpl, trips_finder::TripsFinderServiceImpl},
 };
 use consumers::geoposition::spawn_long_running_kafka_processor;
-use dotenv::from_filename;
 use redis::Client;
 use tonic::transport::Server;
 
 #[tokio::main]
 async fn main() -> () {
-    load_environment();
     env_logger::init();
 
     let kafka_handle: tokio::task::JoinHandle<Result<(), rdkafka::error::KafkaError>> =
@@ -77,10 +75,4 @@ async fn main() -> () {
             }
         }
     }
-}
-
-fn load_environment() {
-    let env = env::var("APP_ENV").unwrap_or_else(|_| "dev".into());
-    let filename = format!(".env.{}", env);
-    from_filename(&filename).ok();
 }

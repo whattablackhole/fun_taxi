@@ -1,34 +1,46 @@
-FROM rust:1.88.0 AS build
+FROM rust:1.88.0-slim-bookworm AS builder
 
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    protobuf-compiler
+    protobuf-compiler \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install cargo-chef
 
 WORKDIR /geo_service
 
-COPY Cargo.toml Cargo.lock ./
-COPY .cargo .cargo
+FROM builder AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-RUN mkdir src && echo "fn main() {}" > src/main.rs
+FROM builder AS cacher
+COPY --from=planner /geo_service/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 
-RUN cargo build
-
+FROM builder AS app_builder
+WORKDIR /geo_service
+COPY --from=cacher /geo_service/target /geo_service/target
+COPY --from=cacher /usr/local/cargo/bin /usr/local/cargo/bin
 COPY ./src ./src
 COPY ./proto ./proto
 COPY ./build.rs ./build.rs
-
-RUN cargo build
+COPY Cargo.toml Cargo.lock ./
+COPY .cargo .cargo
+RUN cargo build --release
 
 FROM debian:bookworm-slim AS app
 
-RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /geo_service/target/debug/geo_service_rs .
+WORKDIR /app
 
-COPY .env.compose .
-COPY .env.kubernetes .
-COPY .env.dev .
+COPY --from=app_builder /geo_service/target/release/geo_service_rs .
 
 CMD ["./geo_service_rs"]
