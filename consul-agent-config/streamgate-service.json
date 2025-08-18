@@ -8,8 +8,9 @@
       "streamgate-backend"
     ],
     "check": {
-      "http": "http://streamgate:7067/health",
-      "interval": "10s",
+      "tcp": "streamgate:7067",
+      "tls_skip_verify": true,
+      "interval": "30s",
       "timeout": "1s"
     }
   }

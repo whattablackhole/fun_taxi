@@ -2,14 +2,15 @@
   "service": {
     "id": "streamgate2",
     "name": "streamgate",
-    "port": 7068,
+    "port": 7067,
     "address": "streamgate2",
     "tags": [
       "streamgate-backend"
     ],
     "check": {
-      "http": "http://streamgate2:7068/health",
-      "interval": "10s",
+      "tcp": "streamgate2:7067",
+      "tls_skip_verify": true,
+      "interval": "30s",
       "timeout": "1s"
     }
   }
