@@ -1,0 +1,3 @@
+[submodule "streamgate_rs/axum-tonic"]
+	path = streamgate_rs/axum-tonic
+	url = https://github.com/whattablackhole/axum-tonic

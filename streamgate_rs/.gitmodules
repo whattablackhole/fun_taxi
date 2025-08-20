@@ -1,3 +1,0 @@
-[submodule "axum-tonic"]
-	path = axum-tonic
-	url = https://github.com/whattablackhole/axum-tonic
