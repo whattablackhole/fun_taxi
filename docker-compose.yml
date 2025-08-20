@@ -136,6 +136,8 @@ services:
     networks:
       - app-network
     depends_on:
+      init-kafka:
+        condition: service_completed_successfully
       kafka:
         condition: service_healthy
       redis:
@@ -247,6 +249,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  init-kafka:
+    image: bitnami/kafka:latest
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./init-scripts:/init-scripts
+    entrypoint: ["/init-scripts/create_kafka_topics.sh"]
+    networks:
+      - app-network 
   akhq:
     image: tchiotludo/akhq
     environment:

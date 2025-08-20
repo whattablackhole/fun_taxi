@@ -21,8 +21,7 @@ pub fn spawn_trip_state_consumer(
     return tokio::spawn(async move {
         let grpc_channel =
             tonic::transport::Channel::from_shared(env::var("STREAMGATE_GRPC_ADDRESS")?)?
-                .connect()
-                .await?;
+                .connect_lazy();
 
         bus_channel
             .queue_declare(
